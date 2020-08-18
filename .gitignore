@@ -1,3 +1,18 @@
+## Google Drive file
+desktop.ini
+
+## Tore files
+CycleGAN-Keras
+
+## 3D models
+*.mtl
+*.obj
+*.zip
+
+## Images
+*.png
+*.jpg
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
