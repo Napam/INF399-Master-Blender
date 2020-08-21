@@ -1,14 +1,40 @@
 import bpy
 from types import FunctionType
+from typing import Callable
 import pathlib
 
 def unused_remover(block):
-    '''Remove all unused in block'''
+    '''
+    Remove all unused in block
+    
+    Parameters
+    -----------
+    block: for example bpy.data.materials and bpy.data.meshes
+    '''
     for obj in block:
         if obj.users == 0:
             block.remove(obj)
 
-def rm_collection(collection, materials=True, meshes=True, lights=True):
+def select_collection(collection: bpy.types.Collection, deselect_first: bool=True) -> list:
+    '''
+    Select all objects in collection and returns them in a list
+
+    Parameters
+    ----------
+    collection: collection object
+
+    deselect_first: whether to deselect everything else first or not
+    '''
+    if deselect_first:
+        bpy.ops.object.select_all(action='DESELECT')
+
+    for obj in collection.all_objects:
+        obj.select_set(True)
+    
+    return list(collection.all_objects)
+
+def rm_collection(collection: bpy.types.Collection, materials: bool=True, meshes: bool=True, 
+                  lights: bool=True):
     '''Remove objects in given collection and unused materials, meshes and lights'''
     [bpy.data.objects.remove(c, do_unlink=True) for c in collection.objects]    
     if materials: unused_remover(bpy.data.materials)
@@ -16,6 +42,9 @@ def rm_collection(collection, materials=True, meshes=True, lights=True):
     if lights: unused_remover(bpy.data.lights)
 
 def capture_camera(fileformat: str=None, filepath: str=None):
+    '''
+    Renders image through camera anad dumps to filepath
+    '''
     if fileformat is None:
         fileformat = 'PNG'
     if filepath is None:
@@ -26,7 +55,7 @@ def capture_camera(fileformat: str=None, filepath: str=None):
     print('Rendering and saving')
     return bpy.ops.render.render(write_still=True)
 
-def add_object(add, collection=None, modifier=None):
+def add_object(add: Callable, collection: bpy.types.Collection=None, modifier=None):
     '''
     Adds object using built in add methods
     
@@ -48,32 +77,32 @@ def add_object(add, collection=None, modifier=None):
         collection.objects.link(curr)
     return curr 
 
-def add_primitive_plane(collection):
+def add_primitive_plane(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_plane_add(), collection)
 
-def add_primitive_cube(collection):
+def add_primitive_cube(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_cube_add(), collection)
 
-def add_primitive_circle(collection):
+def add_primitive_circle(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_circle_add(), collection)
 
-def add_primitive_uv_sphere(collection):
+def add_primitive_uv_sphere(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_uv_sphere_add(), collection)
 
-def add_primitive_ico_sphere(collection):
+def add_primitive_ico_sphere(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_ico_sphere_add(), collection)
 
-def add_primitive_cylinder(collection):
+def add_primitive_cylinder(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_cylinder_add(), collection)
 
-def add_primitive_cone(collection):
+def add_primitive_cone(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_cone_add(), collection)
 
-def add_primitive_torus(collection):
+def add_primitive_torus(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_torus_add(), collection)
 
-def add_primitive_grid(collection):
+def add_primitive_grid(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_grid_add(), collection)
 
-def add_primitive_monkey(collection):
+def add_primitive_monkey(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_monkey_add(), collection)

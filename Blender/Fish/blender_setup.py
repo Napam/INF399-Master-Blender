@@ -49,10 +49,7 @@ def inject_vars(namespace: dict, verbose=True):
         verbose=verbose
     )
 
-    # Add working directory path as a variable 
-
-
-def init(namespace, verbose=True):
+def init(namespace: dict, verbose=True):
     '''
     Initializes Python environment in Blender
 
