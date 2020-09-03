@@ -4,6 +4,9 @@ desktop.ini
 ## Tore files
 CycleGAN-Keras
 
+## SQL
+*.db
+
 ## 3D models
 *.mtl
 *.obj
