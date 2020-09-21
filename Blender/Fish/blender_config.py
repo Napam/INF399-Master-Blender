@@ -1,3 +1,11 @@
+'''
+Configuration file for Blender environment
+
+Contains constants that will be used for Blender master project
+
+Written by Naphat Amundsen
+'''
+
 import numpy as np 
 
 '''generate.py'''

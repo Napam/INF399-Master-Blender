@@ -1,3 +1,11 @@
+'''
+Module for convenience when scripting in Blender
+
+Adds common use variables into environment
+
+Written by Naphat Amundsen
+'''
+
 import bpy
 import sys
 import os

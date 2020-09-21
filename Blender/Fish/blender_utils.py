@@ -1,7 +1,23 @@
+'''
+Module containing utility functions for scripting environment in Blender 2.83 LTS (but may work
+with other versions as well).
+
+Contains functions for 
+
+- Removing objects 
+- Adding primitive objects
+- Selecting objects
+- And more similar utilities
+
+Written by Naphat Amundsen
+'''
+
 import bpy
 from types import FunctionType
-from typing import Callable
+from typing import Callable, Optional
 import pathlib
+import blender_config as cng
+
 
 def unused_remover(block):
     '''
@@ -14,6 +30,7 @@ def unused_remover(block):
     for obj in block:
         if obj.users == 0:
             block.remove(obj)
+
 
 def select_collection(collection: bpy.types.Collection, deselect_first: bool=True) -> list:
     '''
@@ -33,6 +50,7 @@ def select_collection(collection: bpy.types.Collection, deselect_first: bool=Tru
     
     return list(collection.all_objects)
 
+
 def rm_collection(collection: bpy.types.Collection, materials: bool=True, meshes: bool=True, 
                   lights: bool=True):
     '''Remove objects in given collection and unused materials, meshes and lights'''
@@ -41,19 +59,31 @@ def rm_collection(collection: bpy.types.Collection, materials: bool=True, meshes
     if meshes: unused_remover(bpy.data.meshes)
     if lights: unused_remover(bpy.data.lights)
 
-def capture_camera(fileformat: str=None, filepath: str=None):
-    '''
-    Renders image through camera anad dumps to filepath
-    '''
+
+def render_and_save(filepath: str, fileformat: Optional[str]=None) -> dict:    
+    """Captures image from camera and dumps to file
+
+    Parameters
+    ----------
+    filepath : str
+        filepath
+    fileformat : Optional[str], optional
+        Must be supported types by blender, by default PNG
+
+    Returns
+    -------
+    dict :
+        Blender return value from bpy.ops.render.render(write_still=True)
+    """    
     if fileformat is None:
         fileformat = 'PNG'
-    if filepath is None:
-        filepath = str(pathlib.Path(bpy.data.filepath).parent / 'renders/image')
 
+    # Set values in Blender environment
     bpy.context.scene.render.image_settings.file_format = fileformat
     bpy.context.scene.render.filepath = filepath
-    print('Rendering and saving')
+
     return bpy.ops.render.render(write_still=True)
+
 
 def add_object(add: Callable, collection: bpy.types.Collection=None, modifier=None):
     '''
@@ -68,6 +98,7 @@ def add_object(add: Callable, collection: bpy.types.Collection=None, modifier=No
     collection: If collection is specified it will link
                 the newly created object to collection 
     '''
+    
     # bpy.ops methods returns a set
     if not type(add) == set: add(*args, **kwargs)
     curr = bpy.context.active_object
@@ -77,32 +108,43 @@ def add_object(add: Callable, collection: bpy.types.Collection=None, modifier=No
         collection.objects.link(curr)
     return curr 
 
+
 def add_primitive_plane(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_plane_add(), collection)
+
 
 def add_primitive_cube(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_cube_add(), collection)
 
+
 def add_primitive_circle(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_circle_add(), collection)
+
 
 def add_primitive_uv_sphere(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_uv_sphere_add(), collection)
 
+
 def add_primitive_ico_sphere(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_ico_sphere_add(), collection)
+
 
 def add_primitive_cylinder(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_cylinder_add(), collection)
 
+
 def add_primitive_cone(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_cone_add(), collection)
+
 
 def add_primitive_torus(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_torus_add(), collection)
 
+
 def add_primitive_grid(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_grid_add(), collection)
 
+
 def add_primitive_monkey(collection: bpy.types.Collection):
     return add_object(bpy.ops.mesh.primitive_monkey_add(), collection)
+

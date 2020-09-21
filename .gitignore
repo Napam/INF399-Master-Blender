@@ -3,6 +3,13 @@ desktop.ini
 
 ## Tore files
 CycleGAN-Keras
+Fish_Tore
+
+## Python stuff
+__pycache__
+
+###
+.vscode
 
 ## SQL
 *.db
