@@ -24,7 +24,10 @@ IMAGE_NAME = 'img'
 
 '''DB'''
 BBOX_DB_FILE = 'bboxes.db'
-BBOX_DB_TABLE = 'bboxes' # Compitability during dev
-BBOX_DB_TABLE_LWH = 'bboxes_lwh' # Length width height
+# BBOX_DB_TABLE = 'bboxes' # Compatibility during dev
+BBOX_DB_TABLE_XYZ = 'bboxes_xyz' # Length width height
 BBOX_DB_TABLE_CPS = 'bboxes_cps' # Corner points
+DEFAULT_BBOX_MODE = 'cps'
+DEFAULT_DB_TABLE = BBOX_DB_TABLE_CPS
+
 

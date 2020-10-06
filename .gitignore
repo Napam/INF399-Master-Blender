@@ -8,16 +8,24 @@ Fish_Tore
 ## Python stuff
 __pycache__
 
-###
+## Vim stuff
+*.swp
+
+## Blender files
+*.blend
+*.blend1
+
+### VS code
 .vscode
 
 ## SQL
 *.db
 
 ## 3D models
-*.mtl
-*.obj
-*.zip
+Blender/Fish/data
+
+# Generated data
+Blender/Fish/generated_data
 
 ## Images
 *.png
