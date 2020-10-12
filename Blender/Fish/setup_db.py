@@ -3,6 +3,8 @@ import blender_config as cng
 import sqlite3 as db
 
 GEN_DIR = pathlib.Path(cng.GENERATED_DATA_DIR)
+dir_ = os.path.dirname(bpy.data.filepath)
+dirpath = pathlib.Path(dir_)
 
 class DatabaseMaker:
     """
@@ -78,6 +80,8 @@ class DatabaseMaker:
 
 
 if __name__ == "__main__":
+    # Create folder if not exist
+    pathlib.Path(dirpath / GEN_DIR).mkdir(parents=True, exist_ok=True)
     db_ = DatabaseMaker()
     db_.create_bboxes_cps_table()
     db_.create_bboxes_xyz_table()

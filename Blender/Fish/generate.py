@@ -377,6 +377,10 @@ class Scenemaker:
 
 
 def main() -> None:
+    bpy.context.scene.render.engine = 'CYCLES'
+    bpy.context.scene.render.device = 'GPU'
+    bpy.context.scene.render.aa_samples = 16
+
     scene = Scenemaker()
     con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
     cursor = con.cursor()
