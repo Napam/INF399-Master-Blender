@@ -378,7 +378,7 @@ class Scenemaker:
 
 def main() -> None:
     bpy.context.scene.render.engine = 'CYCLES'
-    bpy.context.scene.render.device = 'GPU'
+    bpy.context.scene.cycles.device = 'GPU'
     bpy.context.scene.render.aa_samples = 16
 
     scene = Scenemaker()
