@@ -1,27 +1,30 @@
-import bpy
+import abc
 import os
-import sys
-import numpy as np
-import pandas as pd
-from importlib import reload
-from tqdm import tqdm
 import pathlib
 import random
+import sys
 import time
-from typing import Optional, List, Tuple, Dict
-import abc
+from importlib import reload
+from typing import Dict, List, Optional, Tuple
+
+import bpy
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
 # Add local files ty pythondir in order to import relative files
 dir_ = os.path.dirname(bpy.data.filepath)
-# if dir_ not in sys.path:
-    # sys.path.append(dir_)
+if dir_ not in sys.path:
+    sys.path.append(dir_)
 dirpath = pathlib.Path(dir_)
 
+import sqlite3 as db
+
+from mathutils import Vector
+
+import blender_config as cng
 import blender_setup as setup
 import blender_utils as utils
-import blender_config as cng
-from mathutils import Vector
-import sqlite3 as db
 
 reload(setup)
 reload(utils)
@@ -135,7 +138,6 @@ class DatadumpVisitor(Scenevisitor):
         self,
         bbox_mode: Optional[str] = None,
         cursor: Optional[db.Cursor] = None,
-        verbosity: int = 0,
     ) -> None:
         """
         Parameters:
@@ -156,11 +158,8 @@ class DatadumpVisitor(Scenevisitor):
         self.con = None
         self.cursor = cursor
         if self.cursor is None:
-
-            self.con = db.connect(
-                str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE)
-            )
-            self.cursor = con.cursor()
+            self.con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
+            self.cursor = self.con.cursor()
 
         self.bbox_mode = bbox_mode
         if self.bbox_mode is None:
@@ -311,9 +310,7 @@ class Scenemaker:
         # Will update classdict in-place
         self.create_classdict()
 
-    def generate_scene(
-        self, n: int = 3, spawnbox: Optional[str] = None
-    ) -> List[bpy.types.Object]:
+    def generate_scene(self, n: int = 3, spawnbox: Optional[str] = None) -> List[bpy.types.Object]:
         """
         Copy fishes from src_collection and place them within "spawnbox" (a Cube)
 
@@ -383,7 +380,7 @@ class Scenemaker:
         return self.name2num
 
 
-def main():
+def main() -> None:
     scene = Scenemaker()
     con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
     cursor = con.cursor()
@@ -432,95 +429,6 @@ def main():
 
 
 if __name__ == "__main__":
-    setup.init(globals(), False)
+    main()
 
-    scene = Scenemaker()
 
-    print('Test')
-
-    def generate_data(n_data: int):
-        con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
-        cursor = con.cursor()
-        bbox_mode = "cps"
-        scene.create_metadata()
-        maxid = get_max_imgid(cursor, cng.DB)
-
-        # If not start at zero, then must increment +1
-        # Else just start at zero since want to start
-        # counting at zero
-        if maxid != 0:
-            maxid += 1
-
-        print("Starting at index:", maxid)
-        imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
-
-        commitinterval = 32  # Commit every 32th
-
-        for i in range(maxid, maxid + n_data):
-            scene.clear()
-            n = np.random.randint(1, 6)
-            scene.generate_scene(n)
-            utils.render_and_save(imgpath + str(i))
-            # scene.save_labels_sqlite(i, cursor=cursor)
-            datavisitor.visit(scene)
-
-            # Commit at every 32nd scene
-            commit_flag = i % commitinterval == 0
-
-            if commit_flag:
-                con.commit()
-
-        # If loop exited without commiting remaining stuff
-        if not commit_flag:
-            con.commit()
-
-        con.close()
-
-    def generate_data(n_data: int):
-        con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
-        cursor = con.cursor()
-        datavisitor = DatadumpVisitor(
-            cursor=cursor,
-        )
-        bbox_mode = "cps"
-        datavisitor.create_metadata(scene)
-        maxid = get_max_imgid(
-            cursor,
-            cng.BBOX_DB_TABLE_CPS if bbox_mode == "cps" else cng.BBOX_DB_TABLE_XYZ,
-        )
-
-        # If not start at zero, then must increment +1
-        # Else just start at zero since want to start
-        # counting at zero
-        if maxid != 0:
-            maxid += 1
-
-        print("Starting at index:", maxid)
-        imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
-
-        commitinterval = 32  # Commit every 32th
-
-        for i in range(maxid, maxid + n_data):
-            scene.clear()
-            n = np.random.randint(1, 6)
-            scene.generate_scene(n)
-            utils.render_and_save(imgpath + str(i))
-            # scene.save_labels_sqlite(i, cursor=cursor)
-            datavisitor.visit(scene)
-
-            # Commit at every 32nd scene
-            commit_flag = i % commitinterval == 0
-
-            if commit_flag:
-                con.commit()
-
-        # If loop exited without commiting remaining stuff
-        if not commit_flag:
-            con.commit()
-
-        con.close()
-
-    def generate():
-        s.clear()
-        n = np.random.randint(1, 8)
-        s.generate_scene(n)
