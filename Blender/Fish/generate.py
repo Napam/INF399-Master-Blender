@@ -379,7 +379,7 @@ class Scenemaker:
 def main() -> None:
     bpy.context.scene.render.engine = 'CYCLES'
     bpy.context.scene.cycles.device = 'GPU'
-    bpy.context.scene.cycles.aa_samples = 16
+    bpy.context.scene.cycles.aa_samples = 128
 
     scene = Scenemaker()
     con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
@@ -405,7 +405,7 @@ def main() -> None:
 
     commitinterval = 32  # Commit every 32th
 
-    n_data = 20
+    n_data = 10
     for i in range(maxid, maxid + n_data):
         scene.clear()
         n = np.random.randint(1, 6)
