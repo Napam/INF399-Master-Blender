@@ -4,24 +4,24 @@ import sqlite3 as db
 
 GEN_DIR = pathlib.Path(cng.GENERATED_DATA_DIR)
 
-
 class DatabaseMaker:
     """
     Used for setting up sqlite3 database
     """
 
     def __init__(self):
+        # This makes the .db file if not existing
         self.con = db.connect(GEN_DIR / cng.BBOX_DB_FILE)
         self.cursor = self.con.cursor()
 
     def __del__(self):
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         print("Closed database connection")
         self.con.close()
 
-    def create_bboxes_cps_table(self):
+    def create_bboxes_cps_table(self) -> None:
         """
         Creating tables does not require commiting.
         sqlite3 will raise error if table already exists
@@ -59,7 +59,7 @@ class DatabaseMaker:
         """
         )
 
-    def create_bboxes_xyz_table(self):
+    def create_bboxes_xyz_table(self) -> None:
         """
         Creating tables does not require commiting.
         sqlite3 will raise error if table already exists

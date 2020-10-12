@@ -9,8 +9,6 @@ from typing import Dict, List, Optional, Tuple
 
 import bpy
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
 
 # Add local files ty pythondir in order to import relative files
 dir_ = os.path.dirname(bpy.data.filepath)
@@ -19,8 +17,6 @@ if dir_ not in sys.path:
 dirpath = pathlib.Path(dir_)
 
 import sqlite3 as db
-
-from mathutils import Vector
 
 import blender_config as cng
 import blender_setup as setup
