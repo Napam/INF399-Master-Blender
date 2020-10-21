@@ -22,10 +22,10 @@ __pycache__
 *.db
 
 ## 3D models
-Blender/Fish/data
+*/Blender/data
 
 # Generated data
-Blender/Fish/generated_data
+*/Blender/generated_data
 
 ## Images
 *.png

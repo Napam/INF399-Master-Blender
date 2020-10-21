@@ -1,1 +1,0 @@
-{0: 'haddock', 1: 'hake', 2: 'herring', 3: 'mackerel', 4: 'redgurnard', 5: 'whiting'}

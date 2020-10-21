@@ -1,7 +1,0 @@
-newmtl rgu_360:_rgu_360
-illum 4
-Kd 0.00 0.00 0.00
-Ka 0.00 0.00 0.00
-Tf 1.00 1.00 1.00
-map_Kd 356 rgu 360.jpg
-Ni 1.00
