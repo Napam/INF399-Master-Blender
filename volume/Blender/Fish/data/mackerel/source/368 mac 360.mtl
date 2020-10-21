@@ -1,0 +1,7 @@
+newmtl mac_360:_mac_360
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+map_Kd 368 mac 360.jpg
+Ni 1.00
