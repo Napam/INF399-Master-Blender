@@ -377,6 +377,9 @@ class Scenemaker:
 
 
 def main() -> None:
+    # Set GPU settings
+
+    
     bpy.context.scene.render.engine = 'CYCLES'
     bpy.context.scene.cycles.device = 'GPU'
     bpy.context.scene.cycles.aa_samples = 128
