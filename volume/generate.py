@@ -26,10 +26,6 @@ reload(setup)
 reload(utils)
 reload(cng)
 
-import glob
-from pprint import pprint
-
-
 def get_spawn_locs(n: int, spawnbox: Optional[str] = None) -> np.ndarray:
     """
     Helper function get spawn location for objects
@@ -374,64 +370,3 @@ class Scenemaker:
         self.num2name = {i: obj.name for i, obj in enumerate(self.src_objects)}
         print(self.num2name)
         return self.name2num
-
-
-def main() -> None:
-    # Set GPU settings
-
-    
-    bpy.context.scene.render.engine = 'CYCLES'
-    bpy.context.scene.cycles.device = 'GPU'
-    bpy.context.scene.cycles.aa_samples = 128
-
-    scene = Scenemaker()
-    con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
-    cursor = con.cursor()
-    bbox_mode = "xyz"
-    datavisitor = DatadumpVisitor(
-        cursor=cursor,
-        bbox_mode=bbox_mode,
-    )
-    datavisitor.create_metadata(scene)
-    maxid = get_max_imgid(
-        cursor, cng.BBOX_DB_TABLE_CPS if bbox_mode == "cps" else cng.BBOX_DB_TABLE_XYZ
-    )
-
-    # If not start at zero, then must increment +1
-    # Else just start at zero since want to start
-    # counting at zero
-    if maxid != 0:
-        maxid += 1
-
-    print("Starting at index:", maxid)
-    imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
-
-    commitinterval = 32  # Commit every 32th
-
-    n_data = 10
-    for i in range(maxid, maxid + n_data):
-        scene.clear()
-        n = np.random.randint(1, 6)
-        scene.generate_scene(n)
-        utils.render_and_save(imgpath + str(i))
-        # scene.save_labels_sqlite(i, cursor=cursor)
-        datavisitor.set_n(i)
-        datavisitor.visit(scene)
-
-        # Commit at every 32nd scene
-        commit_flag = i % commitinterval == 0
-
-        if commit_flag:
-            con.commit()
-
-    # If loop exited without commiting remaining stuff
-    if not commit_flag:
-        con.commit()
-
-    con.close()
-
-
-if __name__ == "__main__":
-    main()
-
-
