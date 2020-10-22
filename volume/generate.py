@@ -103,7 +103,7 @@ def get_max_imgid(cursor: db.Cursor, table: str) -> int:
     maxid = res.fetchall()[0][0]
 
     if maxid is None:
-        return 0
+        return None
     else:
         return maxid
 

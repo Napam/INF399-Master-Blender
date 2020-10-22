@@ -1,10 +1,12 @@
 import pathlib
 import blender_config as cng
 import sqlite3 as db
+import os
+# import bpy
 
 GEN_DIR = pathlib.Path(cng.GENERATED_DATA_DIR)
-dir_ = os.path.dirname(bpy.data.filepath)
-dirpath = pathlib.Path(dir_)
+# dir_ = os.path.dirname(bpy.data.filepath)
+# dirpath = pathlib.Path(dir_)
 
 class DatabaseMaker:
     """
@@ -12,15 +14,18 @@ class DatabaseMaker:
     """
 
     def __init__(self):
+        '''
+        Connects to .db file on initialization, creates one if not existing
+        '''
         # This makes the .db file if not existing
-        self.con = db.connect(GEN_DIR / cng.BBOX_DB_FILE)
+        self.con = db.connect(os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE))
         self.cursor = self.con.cursor()
 
     def __del__(self):
         self.close()
 
     def close(self) -> None:
-        print("Closed database connection")
+        print("Closing database connection")
         self.con.close()
 
     def create_bboxes_cps_table(self) -> None:
@@ -81,7 +86,8 @@ class DatabaseMaker:
 
 if __name__ == "__main__":
     # Create folder if not exist
-    pathlib.Path(dirpath / GEN_DIR).mkdir(parents=True, exist_ok=True)
-    db_ = DatabaseMaker()
-    db_.create_bboxes_cps_table()
-    db_.create_bboxes_xyz_table()
+    # pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
+    # db_ = DatabaseMaker()
+    # db_.create_bboxes_cps_table()
+    # db_.create_bboxes_xyz_table()
+    pass
