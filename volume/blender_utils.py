@@ -13,7 +13,6 @@ Written by Naphat Amundsen
 """
 
 import bpy
-from types import FunctionType
 from typing import Callable, Optional
 import pathlib
 import blender_config as cng
@@ -61,7 +60,18 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
         return super().parse_args(args=self._get_argv_after_doubledash())
 
 
-def unused_remover(block):
+def show_reference(show: bool) -> None:
+    """Show reference collection or not. Reference collection contains object used to sanity 
+    check Blender stuff. 
+
+    Parameters
+    ----------
+    show : bool
+    """
+    bpy.data.collections[cng.REF_CLTN].hide_render = show
+
+
+def unused_remover(block) -> None:
     """
     Remove all unused in block
 
@@ -125,7 +135,7 @@ def render_and_save(filepath: str, fileformat: Optional[str] = None) -> dict:
         Blender return value from bpy.ops.render.render(write_still=True)
     """
     if fileformat is None:
-        fileformat = "PNG"
+        fileformat = cng.DEFAULT_FILEFORMAT
 
     # Set values in Blender environment
     bpy.context.scene.render.image_settings.file_format = fileformat
@@ -134,7 +144,9 @@ def render_and_save(filepath: str, fileformat: Optional[str] = None) -> dict:
     return bpy.ops.render.render(write_still=True)
 
 
-def add_object(add: Callable, collection: bpy.types.Collection = None, modifier=None):
+def add_object(
+    add: Callable, collection: bpy.types.Collection = None, modifier=None, *args, **kwargs
+) -> None:
     """
     Adds object using built in add methods
 

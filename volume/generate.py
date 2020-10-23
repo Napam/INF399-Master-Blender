@@ -5,7 +5,7 @@ import random
 import sys
 import time
 from importlib import reload
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import bpy
 import numpy as np
@@ -26,6 +26,7 @@ reload(setup)
 reload(utils)
 reload(cng)
 
+
 def get_spawn_locs(n: int, spawnbox: Optional[str] = None) -> np.ndarray:
     """
     Helper function get spawn location for objects
@@ -43,7 +44,7 @@ def get_spawn_locs(n: int, spawnbox: Optional[str] = None) -> np.ndarray:
             object.
     """
     if spawnbox is None:
-        spawnbox = cng.SPAWNBOX
+        spawnbox = cng.SPAWNBOX_OBJ
 
     box = bpy.data.objects[spawnbox]
     loc = np.array(box.location)  # Center location
@@ -90,6 +91,17 @@ def create_datadir(dirname: Optional[str] = None) -> None:
     pathlib.Path(dirpath / dirname).mkdir(parents=True, exist_ok=True)
 
 
+def create_metadata(scene: "Scenemaker") -> None:
+    """
+    Creates a text file containing the metadata which is as of now a dictionary
+    between
+    """
+    create_datadir()
+
+    with open(dirpath / cng.GENERATED_DATA_DIR / "metadata.txt", "w+") as f:
+        f.write(str(scene.num2name))
+
+
 def get_max_imgid(cursor: db.Cursor, table: str) -> int:
     """
     Get max imgid, which should represent the id number (integer) of the latest
@@ -97,13 +109,13 @@ def get_max_imgid(cursor: db.Cursor, table: str) -> int:
 
     Return
     ------
-    maxid
+    maxid if there are any entries in table, else return -1
     """
     res = cursor.execute(f"SELECT MAX(imgnr) FROM {table}")
     maxid = res.fetchall()[0][0]
 
     if maxid is None:
-        return None
+        return -1
     else:
         return maxid
 
@@ -128,13 +140,13 @@ class DatadumpVisitor(Scenevisitor):
 
     def __init__(
         self,
-        bbox_mode: Optional[str] = None,
+        bbox_modes: Optional[Sequence[str]] = None,
         cursor: Optional[db.Cursor] = None,
     ) -> None:
         """
         Parameters:
         -----------
-        bbox_mode: Optional[str], mode to save to SQL. Available: cornerpints, lwh
+        bbox_mode: Optional[str], mode to save to SQL. Available: cps, xyz
 
         table: Optional str, name of table, if None, then use table specified
                   in config file
@@ -142,7 +154,6 @@ class DatadumpVisitor(Scenevisitor):
         con: Optional sqlite3.connection, if None, then connection is established
              using information from config file. Changes will be committed and
              connection will close just before the method returns.
-
              If cursor is given, the SQL executions will be done the cursor. No comitting
              will be done. In other words, the user will have more control over what
              happens with the database when the ```cursor``` parameter is specified.
@@ -153,25 +164,32 @@ class DatadumpVisitor(Scenevisitor):
             self.con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
             self.cursor = self.con.cursor()
 
-        self.bbox_mode = bbox_mode
-        if self.bbox_mode is None:
-            self.bbox_mode = cng.DEFAULT_BBOX_MODE
+        self.bbox_modes = bbox_modes
+        if self.bbox_modes is None:
+            self.bbox_modes = (cng.DEFAULT_BBOX_MODE,)
 
-        if self.bbox_mode == "cps":
-            self.table = cng.BBOX_DB_TABLE_CPS
-        elif self.bbox_mode == "xyz":
-            self.table = cng.BBOX_DB_TABLE_XYZ
+        # THE CODE BELOW DOES NOT WORK SINCE WHEN YOU GIVE A VARIABLE IN A FUNCTION CALL
+        # PYTHON WILL REMEMBER IS A POINTER TO THE VARIBLE INSTEAD OF DEREFERENCING POINTER
 
-        self.db_method = None
-        if self.bbox_mode == "cps":
-            self.db_method = lambda s: self._db_store(self.extract_labels_cps(s))
-        elif self.bbox_mode == "xyz":
-            self.db_method = lambda s: self._db_store(self.extract_labels_lwh(s))
-        else:
-            raise ValueError(f"Unsupported mode for bbox, got {self.bbox_mode}")
+        # self.strategy_map = {
+        # choice: lambda s: self._db_store(f(s), table)
+        # for choice, table, f in (
+        # (cng.BBOX_MODE_CPS, cng.BBOX_DB_TABLE_CPS, self.extract_labels_cps),
+        # (cng.BBOX_MODE_XYZ, cng.BBOX_DB_TABLE_XYZ, self.extract_labels_xyz),
+        # )
+        # }
+
+        self.strategy_map = {
+            cng.BBOX_MODE_CPS: lambda s: self._db_store(
+                self.extract_labels_cps(s), cng.BBOX_DB_TABLE_CPS
+            ),
+            cng.BBOX_MODE_XYZ: lambda s: self._db_store(
+                self.extract_labels_xyz(s), cng.BBOX_DB_TABLE_XYZ
+            ),
+        }
 
         self.n: int = None
-        self.n_is_set = False
+        self.n_is_set: bool = False
 
     def set_n(self, n: int) -> None:
         """
@@ -180,9 +198,15 @@ class DatadumpVisitor(Scenevisitor):
         self.n_is_set = True
         self.n = n
 
-    def _db_store(self, labels: List[Tuple[int, np.ndarray]]) -> None:
-        """
-        Store labels in sqlite server.
+    def _db_store(self, labels: Sequence[Tuple[int, np.ndarray]], table: str) -> None:
+        """Store labels in given table. Must be correct table or things will crash
+
+        Parameters
+        ----------
+        labels : Sequence[Tuple[int, np.ndarray]]
+            Sequence of tuples: [(class, things), (class, things), ...]
+        table : str
+            Table name in SQL database
         """
         # Labels are expected to be
         # [
@@ -201,7 +225,7 @@ class DatadumpVisitor(Scenevisitor):
 
         # First two "?" are for image id and class respectively, rest are for points
         sql_command = (
-            f'INSERT INTO {self.table} VALUES {("?","?",*["?" for i in range(n_points)])}'
+            f'INSERT INTO {table} VALUES {("?","?",*["?" for i in range(n_points)])}'
         ).replace("'", "")
 
         self.cursor.executemany(sql_command, gen)
@@ -232,7 +256,7 @@ class DatadumpVisitor(Scenevisitor):
         return boxes_list
 
     @staticmethod
-    def extract_labels_lwh(scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
+    def extract_labels_xyz(scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
         """
         Gets labels
 
@@ -248,20 +272,10 @@ class DatadumpVisitor(Scenevisitor):
 
         for obj in objects:
             objclass = obj.name.split(".")[0]
-            lwh = np.array(obj.dimensions)
-            boxes_list.append((scene.name2num[objclass], lwh))
+            xyz = np.array(obj.dimensions)
+            boxes_list.append((scene.name2num[objclass], xyz))
 
         return boxes_list
-
-    def create_metadata(self, scene: "Scenemaker") -> None:
-        """
-        Creates a text file containing the metadata which is as of now a dictionary
-        between
-        """
-        create_datadir()
-
-        with open(dirpath / cng.GENERATED_DATA_DIR / "metadata.txt", "w+") as f:
-            f.write(str(scene.num2name))
 
     def visit(self, scene: "Scenemaker"):
         """
@@ -271,7 +285,9 @@ class DatadumpVisitor(Scenevisitor):
             self.n_is_set
         ), "The value of self.n must be updated using self.set_n before visiting a scene"
 
-        self.db_method(scene)
+        for bbox_mode in self.bbox_modes:
+            self.strategy_map[bbox_mode](scene)
+
         self.n_is_set = False
 
 

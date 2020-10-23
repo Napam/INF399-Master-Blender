@@ -1,9 +1,7 @@
 import os
 import pathlib
 import sys
-from importlib import reload
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import bpy
 import numpy as np
@@ -17,7 +15,6 @@ dirpath = pathlib.Path(dir_)
 import sqlite3 as db
 
 import blender_config as cng
-import blender_setup as setup
 import blender_utils as utils
 
 import generate as gen
@@ -30,62 +27,69 @@ def check_generate_datadir() -> None:
         # Create directory
         pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
 
+        print("DB not found, setting up DB")
         # Setup database
         db_ = DatabaseMaker()
         db_.create_bboxes_cps_table()
         db_.create_bboxes_xyz_table()
 
 
-def main(n: int) -> None:
+def main(n: int, bbox_modes: Sequence[str]) -> None:
+    """Main function for generating data with Blender
+
+    Parameters
+    ----------
+    n : int
+        Number of images to render
+    bbox_modes : Sequence[str]
+        Sequence of modes to save bounding boxes, given as strings. Avilable: xyz cps
+    """
     check_generate_datadir()
 
     scene = gen.Scenemaker()
+    gen.create_metadata(scene)
     con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
     cursor = con.cursor()
-    bbox_mode = "xyz"
-    datavisitor = gen.DatadumpVisitor(
-        cursor=cursor,
-        bbox_mode=bbox_mode,
-    )
-    datavisitor.create_metadata(scene)
-    maxid = gen.get_max_imgid(
-        cursor, cng.BBOX_DB_TABLE_CPS if bbox_mode == "cps" else cng.BBOX_DB_TABLE_XYZ
-    )
 
-    # If not start at zero, then must increment +1
-    # Else just start at zero since want to start
-    # counting at zero
-    if maxid is None:
+    datavisitor = gen.DatadumpVisitor(bbox_modes=bbox_modes, cursor=cursor)
+
+    maxids = [
+        gen.get_max_imgid(cursor, table) for table in (cng.BBOX_DB_TABLE_CPS, cng.BBOX_DB_TABLE_XYZ)
+    ]
+
+    maxid = max(maxids)
+
+    if maxid < 0:
         maxid = 0
     else:
-        assert isinstance(maxid, int)
         maxid += 1
 
     print("Starting at index:", maxid)
     imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
 
-    commitinterval = 32  # Commit every 32th
+    commit_interval = 32  # Commit every 32th
 
+    commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
         scene.clear()
-        n = np.random.randint(1, 6)
-        scene.generate_scene(n)
+        scene.generate_scene(np.random.randint(1, 6))
         utils.render_and_save(imgpath + str(i))
-        # scene.save_labels_sqlite(i, cursor=cursor)
+
         datavisitor.set_n(i)
         datavisitor.visit(scene)
 
         # Commit at every 32nd scene
-        commit_flag = i % commitinterval == 0
+        commit_flag = not i % commit_interval
 
         if commit_flag:
             con.commit()
 
     # If loop exited without commiting remaining stuff
-    if not commit_flag:
+    if commit_flag == False:
         con.commit()
 
     con.close()
+
 
 def set_attrs_cycles(samples: int) -> None:
     bpy.context.scene.render.engine = "CYCLES"
@@ -93,22 +97,51 @@ def set_attrs_cycles(samples: int) -> None:
     bpy.context.scene.cycles.aa_samples = samples
     bpy.context.scene.cycles.progressing = "BRANCHED_PATH"
 
+
 def set_attrs_eevee(samples: int) -> None:
     bpy.context.scene.render.engine = "BLENDER_EEVEE"
-    bpy.context.scene.eevee.taa_render_samples = args.samples
+    bpy.context.scene.eevee.taa_render_samples = samples
+
+
+def clear_generated_data():
+    import errno, stat, shutil
+
+    def handleRemoveReadonly(func, path, exc):
+        try:
+            excvalue = exc[1]
+            if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+                os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
+                func(path)
+            else:
+                raise exc[1]
+        except FileNotFoundError:
+            print(f"{cng.GENERATED_DATA_DIR} not found, doing nothing")
+
+    shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=False, onerror=handleRemoveReadonly)
+
 
 if __name__ == "__main__":
     parser = utils.ArgumentParserForBlender()
 
-    parser.add_argument("n_imgs", help="Number of images to generate", type=int, nargs="?", default=1)
+    parser.add_argument(
+        "n_imgs", help="Number of images to generate", type=int, nargs="?", default=1
+    )
 
     parser.add_argument(
-        "-e", "--engine", help="Specify Blender GPU engine", choices=["eevee", "cycles"]
+        "-e",
+        "--engine",
+        help="Specify Blender GPU engine",
+        choices=("eevee", "cycles"),
+        default="eevee",
+        const="eevee",
+        nargs="?",
     )
 
     parser.add_argument(
         "-c", "--clear", help="Clears generated data before running", action="store_true"
     )
+
+    parser.add_argument("--clear-exit", help="Clears generated data and exits", action="store_true")
 
     parser.add_argument(
         "-s",
@@ -119,21 +152,43 @@ if __name__ == "__main__":
         default=96,
     )
 
+    parser.add_argument(
+        "-b",
+        "--bbox",
+        help="Bounding box type to be stored in SQL database",
+        choices=(cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, "all"),
+        default="all",
+        const="all",
+        nargs="?",
+    )
+    
+    parser.add_argument(
+        "-r", "--reference", help="Include reference objects in render", action="store_false"
+    )
+
     args = parser.parse_args()
 
     if args.clear == True:
-        import shutil
-        shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=True)
+        clear_generated_data()
 
-    if args.engine is not None:
-        # Set GPU settings
-        if args.engine == "cycles":
-            set_attrs_cycles(args.samples)
-        elif args.engine == "eevee":
-            set_attrs_eevee(args.samples)
-        else:
-            raise ValueError(f"Unsupported cycles engine specified, got f{args.engine}")
-    else:
+    if args.clear_exit == True:
+        clear_generated_data()
+        exit()
+
+    # Set GPU settings
+    if args.engine == "cycles":
+        set_attrs_cycles(args.samples)
+    elif args.engine == "eevee":
         set_attrs_eevee(args.samples)
+    else:
+        raise ValueError(f"Unsupported render engine specified, got f{args.engine}")
 
-    main(args.n_imgs)
+    bbox = None
+    if args.bbox == "all":
+        bbox = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ)
+    else:
+        bbox = (args.bbox,)
+
+    utils.show_reference(args.reference)
+
+    main(args.n_imgs, bbox)

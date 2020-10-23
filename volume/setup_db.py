@@ -2,11 +2,13 @@ import pathlib
 import blender_config as cng
 import sqlite3 as db
 import os
+
 # import bpy
 
 GEN_DIR = pathlib.Path(cng.GENERATED_DATA_DIR)
 # dir_ = os.path.dirname(bpy.data.filepath)
 # dirpath = pathlib.Path(dir_)
+
 
 class DatabaseMaker:
     """
@@ -14,9 +16,9 @@ class DatabaseMaker:
     """
 
     def __init__(self):
-        '''
+        """
         Connects to .db file on initialization, creates one if not existing
-        '''
+        """
         # This makes the .db file if not existing
         self.con = db.connect(os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE))
         self.cursor = self.con.cursor()
