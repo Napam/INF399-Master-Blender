@@ -2,6 +2,7 @@ FROM ubuntu:focal
 
 RUN apt-get update && \
 	apt-get install -y \
+		sqlite3 \
 		curl \
 		libfreetype6 \
 		libglu1-mesa \
