@@ -92,6 +92,8 @@ def main(n: int, bbox_modes: Sequence[str]) -> None:
 
 
 def set_attrs_cycles(samples: int) -> None:
+    bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'
+    bpy.context.preferences.addons['cycles'].preferences.devices[0].use = True
     bpy.context.scene.render.engine = "CYCLES"
     bpy.context.scene.cycles.device = "GPU"
     bpy.context.scene.cycles.aa_samples = samples
