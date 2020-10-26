@@ -27,10 +27,6 @@ __pycache__
 # Generated data
 *volume/generated_data
 
-## Images
-*.png
-*.jpg
-
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof

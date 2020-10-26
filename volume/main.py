@@ -132,8 +132,8 @@ if __name__ == "__main__":
         "--engine",
         help="Specify Blender GPU engine",
         choices=("eevee", "cycles"),
-        default="eevee",
-        const="eevee",
+        default=cng.ARGS_DEFAULT_ENGINE,
+        const=cng.ARGS_DEFAULT_ENGINE,
         nargs="?",
     )
 
@@ -146,22 +146,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s",
         "--samples",
-        help="Rendering samples for cycles and eevee",
+        help=f"Rendering samples for cycles and eevee, default {cng.ARGS_DEFAULT_RENDER_SAMPLES}",
         type=int,
         nargs="?",
-        default=96,
+        default=cng.ARGS_DEFAULT_RENDER_SAMPLES,
     )
 
     parser.add_argument(
         "-b",
         "--bbox",
-        help="Bounding box type to be stored in SQL database",
+        help=f"Bounding box type to be stored in SQL database, default: {cng.ARGS_DEFAULT_BBOX_MODE}",
         choices=(cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, "all"),
-        default="all",
-        const="all",
+        default=cng.ARGS_DEFAULT_BBOX_MODE,
+        const=cng.ARGS_DEFAULT_BBOX_MODE,
         nargs="?",
     )
-    
+
     parser.add_argument(
         "-r", "--reference", help="Include reference objects in render", action="store_false"
     )
