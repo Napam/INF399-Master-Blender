@@ -7,11 +7,11 @@
 			"gid": 0
 		},
 		"args": [
-			"sh"
+			"nvidia-smi"
 		],
 		"env": [
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-			"TERM=xterm"
+			"TERM=xterm", "NVIDIA_VISIBLE_DEVICES=0"
 		],
 		"cwd": "/",
 		"capabilities": {
