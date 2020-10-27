@@ -30,8 +30,7 @@ RUN curl -L ${BLENDER_URL} | tar -xJ -C ${BLENDER_DIR}/ && \
 ENV PATH="${PATH}:${BLENDER_DIR}/blender:${BLENDER_DIR}/blender/${BLENDER_MAJOR}/python/bin" 
 
 # pip install stuff
-RUN python3.7m -m ensure pip && python3.7-m -m pip install \
-        readline
+RUN python3.7m -m ensure pip && python3.7-m -m pip install readline
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 
