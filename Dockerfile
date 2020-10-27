@@ -1,9 +1,11 @@
 # FROM ubuntu:focal
 FROM nvidia/cuda:10.1-runtime-ubuntu18.04
 
+# apt install stuff
 RUN apt-get update && \
 	apt-get install -y \
 		sqlite3 \
+        libreadline-dev \
 		curl \
 		libfreetype6 \
 		libglu1-mesa \
@@ -24,7 +26,14 @@ WORKDIR ${WORKDIR}
 RUN curl -L ${BLENDER_URL} | tar -xJ -C ${BLENDER_DIR}/ && \ 
     mv ${BLENDER_DIR}/blender-${BLENDER_VERSION}-linux64 ${BLENDER_DIR}/blender 
 
+# python binaries will be available as python3.7m
 ENV PATH="${PATH}:${BLENDER_DIR}/blender:${BLENDER_DIR}/blender/${BLENDER_MAJOR}/python/bin" 
+
+# pip install stuff
+RUN python3.7m -m ensure pip && python3.7-m -m pip install \
+        readline
+
 ENV NVIDIA_VISIBLE_DEVICES=all
+
 
 CMD ["/bin/bash"] 
