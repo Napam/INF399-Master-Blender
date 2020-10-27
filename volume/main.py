@@ -97,7 +97,7 @@ def set_attrs_cycles(samples: int) -> None:
     bpy.context.scene.render.engine = "CYCLES"
     bpy.context.scene.cycles.device = "GPU"
     bpy.context.scene.cycles.aa_samples = samples
-    bpy.context.scene.cycles.progressing = "BRANCHED_PATH"
+    bpy.context.scene.cycles.progressing = "PATH"
 
 
 def set_attrs_eevee(samples: int) -> None:
