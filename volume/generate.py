@@ -384,5 +384,4 @@ class Scenemaker:
         """
         self.name2num = {obj.name: i for i, obj in enumerate(self.src_objects)}
         self.num2name = {i: obj.name for i, obj in enumerate(self.src_objects)}
-        print(self.num2name)
         return self.name2num

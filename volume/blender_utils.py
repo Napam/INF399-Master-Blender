@@ -60,15 +60,15 @@ class ArgumentParserForBlender(argparse.ArgumentParser):
         return super().parse_args(args=self._get_argv_after_doubledash())
 
 
-def show_reference(show: bool) -> None:
+def show_reference(hide: bool) -> None:
     """Show reference collection or not. Reference collection contains object used to sanity 
     check Blender stuff. 
 
     Parameters
     ----------
-    show : bool
+    hide : bool
     """
-    bpy.data.collections[cng.REF_CLTN].hide_render = show
+    bpy.data.collections[cng.REF_CLTN].hide_render = hide
 
 
 def unused_remover(block) -> None:

@@ -32,6 +32,6 @@ BBOX_DB_TABLE_XYZ = "bboxes_xyz"  # Length width height
 BBOX_DB_TABLE_CPS = "bboxes_cps"  # Corner points
 
 """CLI"""
+ARGS_DEFAULT_ENGINE = "cycles"
 ARGS_DEFAULT_RENDER_SAMPLES = 96
 ARGS_DEFAULT_BBOX_MODE = "all"
-ARGS_DEFAULT_ENGINE = "eevee"
