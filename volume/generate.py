@@ -333,10 +333,11 @@ class Scenemaker:
         rots = get_euler_rotations(n)
         src_samples = random.choices(self.src_objects, k=n)
 
-        # Deselect everything first
-        bpy.ops.object.select_all(action="DESELECT")
-
         for obj, loc, rot in zip(src_samples, locs, rots):
+            # Deselect everything first
+            utils.deselect_all()
+            
+            # Subsequent actions will only affect selected object
             obj.select_set(True)
 
             # Duplicate all selected (which should be the current object only)
@@ -358,6 +359,7 @@ class Scenemaker:
             ##############################
 
             # Unlink object from whatever collection it was assigned to
+            # This affect the current selecte object
             bpy.ops.collection.objects_remove_all()
 
             # Link to target collection

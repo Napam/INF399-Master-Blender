@@ -23,16 +23,42 @@ from setup_db import DatabaseMaker
 
 
 def check_generate_datadir() -> None:
+    """Checks and if necessary, sets up directories and sqlite3 database """
     # If generated data directory does NOT exit
     if not os.path.isdir(cng.GENERATED_DATA_DIR):
         # Create directory
         pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
 
+        # TODO: Maybe set another if for checking if .db file exists
         print("DB not found, setting up DB")
         # Setup database
         db_ = DatabaseMaker()
         db_.create_bboxes_cps_table()
         db_.create_bboxes_xyz_table()
+
+
+def print_boxed(*args: Tuple[str], end="\n"):
+    """I'm a bit extra sometimes u know?"""
+    print(f"{'':{cng.BOXED_SYMBOL_TOP}^{cng.HIGHLIGHT_WIDTH}}")
+    for info in args:
+        print(f"{cng.BOXED_SYMBOL_SIDE}{info:^{cng.HIGHLIGHT_WIDTH-4}}{cng.BOXED_SYMBOL_SIDE}")
+    print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{cng.HIGHLIGHT_WIDTH}}", end=end)
+
+
+def section(info: str) -> Callable:
+    """Decorator that takes in argument for informative text"""
+
+    def section_decorator(f: Callable) -> Callable:
+        def wrapper(*args, **kwargs) -> Any:
+            print(f"{f' {info} ':{cng.SECTION_SYMBOL}^{cng.HIGHLIGHT_WIDTH}}")
+            print(end=cng.SECTION_START_STR)
+            result = f(*args, **kwargs)
+            print(end=cng.SECTION_END_STR)
+            return result
+
+        return wrapper
+
+    return section_decorator
 
 
 def main(n: int, bbox_modes: Sequence[str]) -> None:
@@ -68,8 +94,13 @@ def main(n: int, bbox_modes: Sequence[str]) -> None:
     imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
     commit_interval = 32  # Commit every 32th
     commit_flag: bool = False  # To make Pylance happy
-    print(f"\n{'':*^40}\n*{'Rendering initialized':^38}*")
-    print(f"*{f'Starting at index: {maxid}':^38}*\n{'':*^40}") # I'm a bit extra sometimes
+
+    print_boxed(
+        f"Rendering initialized",
+        f"Imgs to render: {n}",
+        f"Starting at index: {maxid}",
+    )
+
     for i in range(maxid, maxid + n):
         scene.clear()
         scene.generate_scene(np.random.randint(1, 6))
@@ -91,51 +122,79 @@ def main(n: int, bbox_modes: Sequence[str]) -> None:
     con.close()
 
 
-def set_attrs_gpucpu(target_device: str) -> None:
-    '''target_device can be CUDA or CPU'''
-    # YOU NEED TO DO THIS SO THAT BLENDER LOADS AVAILABLE DEVICES!!!
-    assert target_device in ('CUDA', 'CPU')
+@section("Device")
+def set_attrs_device(target_device: str) -> None:
+    """target_device can be CUDA or CPU"""
+    assert target_device in ("CUDA", "CPU")
 
-    print('Getting hardware devices:')
-    devices = bpy.context.preferences.addons['cycles'].preferences.get_devices()
+    print(f"Specified target device {target_device}")
+
+    print("Getting hardware devices:")
+    # YOU NEED TO DO THIS SO THAT BLENDER LOADS AVAILABLE DEVICES!!!
+    devices = bpy.context.preferences.addons["cycles"].preferences.get_devices()
     pprint(devices)
     try:
-        bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'
-        for device in bpy.context.preferences.addons['cycles'].preferences.devices:
+        bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
+        for device in bpy.context.preferences.addons["cycles"].preferences.devices:
             if device.type == target_device:
-                print(f'Enabling device: {device}')
+                print(f"Enabling device: {device}")
                 device.use = True
             else:
                 device.use = False
     except IndexError as e:
-        print('Cycles engine cannot find any devices:')
+        print("Cycles engine cannot find any devices:")
         print(e)
-    
+
     # Set cycles settings
-    if target_device == 'CUDA':
-        bpy.context.scene.cycles.device = 'GPU' 
+    if target_device == "CUDA":
+        bpy.context.scene.cycles.device = "GPU"
     else:
-        bpy.context.scene.cycles.device = 'CPU'
+        bpy.context.scene.cycles.device = "CPU"
+    print(f"Cycles device is now preemptively set to {bpy.context.scene.cycles.device}")
 
 
-def set_attrs_cycles(samples: int) -> None:
-    print('Setting Cycles attributes')
-    bpy.context.scene.render.engine = "CYCLES"
-    bpy.context.scene.cycles.aa_samples = samples
-    print(f'Cycles will render with {bpy.context.scene.cycles.aa_samples} samples')
-    bpy.context.scene.cycles.progressing = "BRANCHED_PATH"
+@section("Engine")
+def set_attrs_engine(engine: str, samples: int) -> None:
+    assert engine in ("BLENDER_EEVEE", "CYCLES")
+
+    bpy.context.scene.render.engine = engine
+    print(f"Render engine is now set to {bpy.context.scene.render.engine}")
+
+    if engine == "CYCLES":
+        bpy.context.scene.cycles.progressive = "BRANCHED_PATH"
+        bpy.context.scene.cycles.samples = samples  # .samples for PATH tracing, not really used
+        bpy.context.scene.cycles.aa_samples = samples  # .aa_samples for BRANCHED_PATH tracing
+        print(f"Cycles is set to {bpy.context.scene.cycles.progressive}")
+        print(f"Cycles will render with {bpy.context.scene.cycles.aa_samples} samples")
+    elif engine == "BLENDER_EEVEE":
+        # EEVEE only works with GPU, no need to explicitly set GPU usage
+        bpy.context.scene.eevee.taa_render_samples = samples
+        print(f"Eevee will render with {bpy.context.scene.eevee.taa_render_samples} samples")
 
 
-def set_attrs_eevee(samples: int) -> None:
-    print('Setting Eevee attributes')
-    # EEVEE only works with GPU, no need to explicitly set GPU usage
-    bpy.context.scene.render.engine = "BLENDER_EEVEE"
-    bpy.context.scene.eevee.taa_render_samples = samples
-    print(f'Eevee will render with {bpy.context.scene.eevee.taa_render_samples} samples')
+@section("View mode")
+def set_attrs_view(mode: str):
+    camera = bpy.data.objects["Camera"]
+    if mode == "stereo":
+        bpy.context.scene.render.use_multiview = True
+        bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
+        bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
+        camera.data.stereo.interocular_distance = 1
+        camera.data.stereo.pivot = "CENTER"
+    elif mode == "single":
+        bpy.context.scene.render.use_multiview = False
+
+    print(f"Stereo mode is set to: {bpy.context.scene.render.use_multiview}")
+    camera.data.lens_unit = "FOV"
+    camera.data.angle = 1.0471975803375244  # 60 degrees in radians
+    camera.data.clip_start = 0.0001
+    camera.data.clip_end = 1000
+    print(f"Camera attributes are set to hardcoded values")
 
 
+@section("Clear data")
 def clear_generated_data():
-    print('Clearing generated data')
+    print("Clearing generated data")
     import errno, stat, shutil
 
     def handleRemoveReadonly(func: Callable, path: str, exc):
@@ -153,7 +212,7 @@ def clear_generated_data():
 
 
 if __name__ == "__main__":
-    print(f"{'':*^40}\n*{'FISH GENERATION BABYYY':^38}*\n{'':*^40}\n")
+    print_boxed("FISH GENERATION BABYYY", end="\n\n")
 
     parser = utils.ArgumentParserForBlender()
 
@@ -165,21 +224,24 @@ if __name__ == "__main__":
         "-e",
         "--engine",
         help="Specify Blender GPU engine",
-        choices=("eevee", "cycles"),
+        choices=("BLENDER_EEVEE", "CYCLES"),
         default=cng.ARGS_DEFAULT_ENGINE,
         const=cng.ARGS_DEFAULT_ENGINE,
         nargs="?",
     )
 
-    parser.add_argument(
-        "-c", "--clear", help="Clears generated data before running", action="store_true"
-    )
-
-    parser.add_argument(
-        "--cpu", help="Force CPU, otherwise will try to enable GPU", action="store_true"
-    )
-
+    parser.add_argument("--clear", help="Clears generated data before running", action="store_true")
     parser.add_argument("--clear-exit", help="Clears generated data and exits", action="store_true")
+
+    parser.add_argument(
+        "-d",
+        "--device",
+        help="Specify Blender target hardware",
+        choices=("CUDA", "CPU"),
+        default=cng.ARGS_DEFAULT_DEVICE,
+        const=cng.ARGS_DEFAULT_DEVICE,
+        nargs="?",
+    )
 
     parser.add_argument(
         "-s",
@@ -204,6 +266,15 @@ if __name__ == "__main__":
         "-r", "--reference", help="Include reference objects in render", action="store_false"
     )
 
+    parser.add_argument(
+        "--view-mode",
+        help="Set render mode between stereo or single",
+        choices=("stereo", "single"),
+        default=cng.ARGS_DEFAULT_VIEW_MODE,
+        const=cng.ARGS_DEFAULT_VIEW_MODE,
+        nargs="?",
+    )
+
     args = parser.parse_args()
 
     if args.clear == True:
@@ -213,24 +284,15 @@ if __name__ == "__main__":
         clear_generated_data()
         exit()
 
-    if args.cpu == True:
-        print('GPU setup disabled, will use CPU')
-        set_attrs_gpucpu('CPU')
-    else:
-        set_attrs_gpucpu('CUDA')
-
-    if args.engine == "cycles":
-        set_attrs_cycles(args.samples)
-    elif args.engine == "eevee":
-        set_attrs_eevee(args.samples)
-    else:
-        raise ValueError(f"Unsupported render engine specified, got f{args.engine}")
-
     bbox = None
     if args.bbox == "all":
         bbox = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ)
     else:
         bbox = (args.bbox,)
+
+    set_attrs_device(args.device)
+    set_attrs_engine(args.engine, args.samples)
+    set_attrs_view(args.view_mode)
 
     utils.show_reference(hide=args.reference)
     main(args.n_imgs, bbox)
