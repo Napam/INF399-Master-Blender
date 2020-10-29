@@ -6,6 +6,7 @@ from pprint import pprint
 
 import bpy
 import numpy as np
+import contextlib
 
 # Add local files ty pythondir in order to import relative files
 dir_ = os.path.dirname(bpy.data.filepath)
@@ -99,6 +100,9 @@ def main(n: int, bbox_modes: Sequence[str]) -> None:
         f"Rendering initialized",
         f"Imgs to render: {n}",
         f"Starting at index: {maxid}",
+        f"Saves images at: {os.path.join(cng.GENERATED_DATA_DIR, cng.IMAGE_DIR)}",
+        f"Sqlite3 DB at: {os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)}",
+        f"bbox_modes: {bbox_modes}"
     )
 
     for i in range(maxid, maxid + n):
@@ -126,18 +130,19 @@ def main(n: int, bbox_modes: Sequence[str]) -> None:
 def set_attrs_device(target_device: str) -> None:
     """target_device can be CUDA or CPU"""
     assert target_device in ("CUDA", "CPU")
-
-    print(f"Specified target device {target_device}")
-
+    print('Note: Eevee only supports GPU, so setting GPU will only affect CYCLES')
+    print(f"Specified target device: {target_device}")
     print("Getting hardware devices:")
     # YOU NEED TO DO THIS SO THAT BLENDER LOADS AVAILABLE DEVICES!!!
-    devices = bpy.context.preferences.addons["cycles"].preferences.get_devices()
-    pprint(devices)
+    bpy.context.preferences.addons["cycles"].preferences.get_devices()
+    devices:Iterable = bpy.context.preferences.addons["cycles"].preferences.devices
+    for d in devices:
+        print('\t',d.id)
     try:
         bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
-        for device in bpy.context.preferences.addons["cycles"].preferences.devices:
+        for device in devices:
             if device.type == target_device:
-                print(f"Enabling device: {device}")
+                print(f"Enabling device: {device.id}")
                 device.use = True
             else:
                 device.use = False
@@ -194,6 +199,7 @@ def set_attrs_view(mode: str):
 
 @section("Clear data")
 def clear_generated_data():
+    '''Removes the directory cng.GENEREATED_DATA_DIR'''
     print("Clearing generated data")
     import errno, stat, shutil
 
@@ -210,9 +216,24 @@ def clear_generated_data():
 
     shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=False, onerror=handleRemoveReadonly)
 
+@section("Show reference")
+def show_reference(hide: bool) -> None:
+    """Show reference collection or not. Reference collection contains object used to sanity 
+    check Blender stuff. 
+
+    Parameters
+    ----------
+    hide : bool
+    """
+    bpy.data.collections[cng.REF_CLTN].hide_render = hide
+    print(f'Render objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}')
 
 if __name__ == "__main__":
-    print_boxed("FISH GENERATION BABYYY", end="\n\n")
+    print_boxed(
+        "FISH GENERATION BABYYY", 
+        f"Blender version: {bpy.app.version_string}", 
+        f"Python version: {sys.version.split()[0]}",
+        end="\n\n")
 
     parser = utils.ArgumentParserForBlender()
 
@@ -293,6 +314,6 @@ if __name__ == "__main__":
     set_attrs_device(args.device)
     set_attrs_engine(args.engine, args.samples)
     set_attrs_view(args.view_mode)
+    show_reference(args.reference)
 
-    utils.show_reference(hide=args.reference)
     main(args.n_imgs, bbox)

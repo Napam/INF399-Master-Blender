@@ -334,18 +334,7 @@ class Scenemaker:
         src_samples = random.choices(self.src_objects, k=n)
 
         for obj, loc, rot in zip(src_samples, locs, rots):
-            # Deselect everything first
-            utils.deselect_all()
-            
-            # Subsequent actions will only affect selected object
-            obj.select_set(True)
-
-            # Duplicate all selected (which should be the current object only)
-            # This operation should change the selected objects to the
-            # duplicated objects
-            bpy.ops.object.duplicate()
-
-            new_obj = bpy.context.selected_objects[0]
+            new_obj = obj.copy()
 
             ##############################
             # Set object attributes here #
@@ -358,16 +347,8 @@ class Scenemaker:
             ##############################
             ##############################
 
-            # Unlink object from whatever collection it was assigned to
-            # This affect the current selecte object
-            bpy.ops.collection.objects_remove_all()
-
             # Link to target collection
             self.target_collection.objects.link(new_obj)
-
-            # Deselect object
-            new_obj.select_set(False)
-
         return src_samples
 
     def clear(self) -> None:
