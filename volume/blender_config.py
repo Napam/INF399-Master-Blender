@@ -16,7 +16,7 @@ SPAWNBOX_OBJ = "spawnbox"  # Spawnbox object, representing the spawn area
 ROT_MUS = [pi / 2, 0, pi]
 ROT_STDS = [0.5, 1, 1]
 DEFAULT_BBOX_MODE = "xyz"  # cps xyz
-COMMIT_INTERVAL = 32  # How often to commit to database (16 mean every for 16th sample)
+COMMIT_INTERVAL = 32  # How often to commit to database (16 means commit at every 16th sample)
 
 """Filesystem, data and database"""
 GENERATED_DATA_DIR = "generated_data"
