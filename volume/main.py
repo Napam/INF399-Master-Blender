@@ -1,3 +1,7 @@
+"""
+Main python file to control Blender application
+"""
+
 import os
 import pathlib
 import sys
@@ -21,27 +25,12 @@ import generate as gen
 from setup_db import DatabaseMaker
 
 
-def check_generate_datadir() -> None:
-    """Checks and if necessary, sets up directories and sqlite3 database """
-    # If generated data directory does NOT exit
-    if not os.path.isdir(cng.GENERATED_DATA_DIR):
-        # Create directory
-        pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
-
-        # TODO: Maybe set another if for checking if .db file exists
-        print("DB not found, setting up DB")
-        # Setup database
-        db_ = DatabaseMaker()
-        db_.create_bboxes_cps_table()
-        db_.create_bboxes_xyz_table()
-
-
 def print_boxed(*args: Tuple[str], end="\n"):
     """I'm a bit extra sometimes u know?"""
     print(f"{'':{cng.BOXED_SYMBOL_TOP}^{cng.HIGHLIGHT_WIDTH}}")
     for info in args:
         print(
-            f"{cng.BOXED_SYMBOL_SIDE}{info:^{cng.HIGHLIGHT_WIDTH-2*len(cng.BOXED_SYMBOL_SIDE)}}{cng.BOXED_SYMBOL_SIDE}"
+            f"{cng.BOXED_STR_SIDE}{info:^{cng.HIGHLIGHT_WIDTH-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}"
         )
     print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{cng.HIGHLIGHT_WIDTH}}", end=end)
 
@@ -62,23 +51,46 @@ def section(info: str) -> Callable:
     return section_decorator
 
 
+@section("Data directory")
+def check_generate_datadir() -> None:
+    """Checks and if necessary, sets up directories and sqlite3 database """
+    # If generated data directory does NOT exit
+    if not os.path.isdir(cng.GENERATED_DATA_DIR):
+        # Create directory
+        print(f"Directery for generated data not found")
+        print(f"Creating directory for generated data: {cng.GENERATED_DATA_DIR}")
+        pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
+    else:
+        print(f"Found directory for generated data: {cng.GENERATED_DATA_DIR}")
+
+    db_path = os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)
+    if not os.path.isfile(db_path):
+        print(f"DB not found, setting up DB at {db_path}")
+        # Setup database
+        db_ = DatabaseMaker()
+        db_.create_bboxes_cps_table()
+        db_.create_bboxes_xyz_table()
+    else:
+        print(f"Found database file: {db_path}")
+
+
 def assert_image_saved(filepath: str) -> None:
-    '''
+    """
     Used to assert that image in filepath exists, will automatically handle stereo and single
-    case 
-    '''
-    errormsgs = ''
+    case
+    """
+    errormsgs = "Render results are missing:"
     if bpy.context.scene.render.use_multiview:
-        l_path = filepath + f'{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}'
-        r_path = filepath + f'{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}'
+        l_path = filepath + f"{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
+        r_path = filepath + f"{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
 
         l_exists = os.path.exists(l_path)
         r_exists = os.path.exists(r_path)
 
         if not l_exists:
-            errormsgs += f'\nLeft image not found, expected to find: {l_path}'
+            errormsgs += f"\nLeft image not found, expected to find: {l_path}"
         if not r_exists:
-            errormsgs += f'\nRight image not found, expected to find: {r_path}'
+            errormsgs += f"\nRight image not found, expected to find: {r_path}"
 
         if not (l_exists and r_exists):
             raise FileNotFoundError(errormsgs)
@@ -86,7 +98,7 @@ def assert_image_saved(filepath: str) -> None:
         path = filepath + cng.DEFAULT_FILEFORMAT
         file_exists = os.path.exists(os.path.exists(path))
         if not file_exists:
-            raise FileNotFoundError(f'Image not found, expected to find: {path}')
+            raise FileNotFoundError(f"Image not found, expected to find: {path}")
 
 
 def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
@@ -134,11 +146,11 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
         input("Press enter to start rendering")
 
     def commit():
-        print('Commited to', cng.BBOX_DB_FILE)
+        print_boxed(f"Commited to {cng.BBOX_DB_FILE}")
         con.commit()
 
-    print_boxed('Rendering initialized')
-    commit_interval = 32  # Commit every 32th
+    print_boxed("Rendering initialized")
+
     commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
         scene.clear()
@@ -150,15 +162,15 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
             assert_image_saved(imgfilepath)
         except FileNotFoundError as e:
             print(e)
-            print('Breaking render loop')
-            commit_flag == False # Will enable commit after the loop
+            print("Breaking render loop")
+            commit_flag == False  # Will enable commit after the loop
             break
 
         datavisitor.set_n(i)
         datavisitor.visit(scene)
 
         # Commit at every 32nd render
-        commit_flag = not i % commit_interval
+        commit_flag = not i % cng.COMMIT_INTERVAL
 
         if commit_flag:
             commit()
@@ -226,7 +238,7 @@ def set_attrs_view(mode: str):
     camera = bpy.data.objects["Camera"]
     if mode == "stereo":
         bpy.context.scene.render.use_multiview = True
-        bpy.context.scene.render.views_format = 'STEREO_3D'
+        bpy.context.scene.render.views_format = "STEREO_3D"
         bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
         bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
         camera.data.stereo.interocular_distance = 1

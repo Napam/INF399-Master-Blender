@@ -111,7 +111,7 @@ def get_max_imgid(cursor: db.Cursor, table: str) -> int:
     ------
     maxid if there are any entries in table, else return -1
     """
-    res = cursor.execute(f"SELECT MAX(imgnr) FROM {table}")
+    res = cursor.execute(f"SELECT MAX({cng.BBOX_DB_IMGRNR}) FROM {table}")
     maxid = res.fetchall()[0][0]
 
     if maxid is None:
