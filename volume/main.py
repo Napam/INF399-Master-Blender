@@ -2,11 +2,9 @@ import os
 import pathlib
 import sys
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
-from pprint import pprint
 
 import bpy
 import numpy as np
-import contextlib
 
 # Add local files ty pythondir in order to import relative files
 dir_ = os.path.dirname(bpy.data.filepath)
@@ -42,7 +40,9 @@ def print_boxed(*args: Tuple[str], end="\n"):
     """I'm a bit extra sometimes u know?"""
     print(f"{'':{cng.BOXED_SYMBOL_TOP}^{cng.HIGHLIGHT_WIDTH}}")
     for info in args:
-        print(f"{cng.BOXED_SYMBOL_SIDE}{info:^{cng.HIGHLIGHT_WIDTH-4}}{cng.BOXED_SYMBOL_SIDE}")
+        print(
+            f"{cng.BOXED_SYMBOL_SIDE}{info:^{cng.HIGHLIGHT_WIDTH-2*len(cng.BOXED_SYMBOL_SIDE)}}{cng.BOXED_SYMBOL_SIDE}"
+        )
     print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{cng.HIGHLIGHT_WIDTH}}", end=end)
 
 
@@ -62,7 +62,34 @@ def section(info: str) -> Callable:
     return section_decorator
 
 
-def main(n: int, bbox_modes: Sequence[str]) -> None:
+def assert_image_saved(filepath: str) -> None:
+    '''
+    Used to assert that image in filepath exists, will automatically handle stereo and single
+    case 
+    '''
+    errormsgs = ''
+    if bpy.context.scene.render.use_multiview:
+        l_path = filepath + f'{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}'
+        r_path = filepath + f'{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}'
+
+        l_exists = os.path.exists(l_path)
+        r_exists = os.path.exists(r_path)
+
+        if not l_exists:
+            errormsgs += f'\nLeft image not found, expected to find: {l_path}'
+        if not r_exists:
+            errormsgs += f'\nRight image not found, expected to find: {r_path}'
+
+        if not (l_exists and r_exists):
+            raise FileNotFoundError(errormsgs)
+    else:
+        path = filepath + cng.DEFAULT_FILEFORMAT
+        file_exists = os.path.exists(os.path.exists(path))
+        if not file_exists:
+            raise FileNotFoundError(f'Image not found, expected to find: {path}')
+
+
+def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
     """Main function for generating data with Blender
 
     Parameters
@@ -93,35 +120,52 @@ def main(n: int, bbox_modes: Sequence[str]) -> None:
         maxid += 1
 
     imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
-    commit_interval = 32  # Commit every 32th
-    commit_flag: bool = False  # To make Pylance happy
 
     print_boxed(
-        f"Rendering initialized",
+        f"Rendering information:",
         f"Imgs to render: {n}",
         f"Starting at index: {maxid}",
         f"Saves images at: {os.path.join(cng.GENERATED_DATA_DIR, cng.IMAGE_DIR)}",
         f"Sqlite3 DB at: {os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)}",
-        f"bbox_modes: {bbox_modes}"
+        f"bbox_modes: {bbox_modes}",
     )
 
+    if wait:
+        input("Press enter to start rendering")
+
+    def commit():
+        print('Commited to', cng.BBOX_DB_FILE)
+        con.commit()
+
+    print_boxed('Rendering initialized')
+    commit_interval = 32  # Commit every 32th
+    commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
         scene.clear()
         scene.generate_scene(np.random.randint(1, 6))
-        utils.render_and_save(imgpath + str(i))
+        imgfilepath = imgpath + str(i)
+        utils.render_and_save(imgfilepath)
+
+        try:
+            assert_image_saved(imgfilepath)
+        except FileNotFoundError as e:
+            print(e)
+            print('Breaking render loop')
+            commit_flag == False # Will enable commit after the loop
+            break
 
         datavisitor.set_n(i)
         datavisitor.visit(scene)
 
-        # Commit at every 32nd scene
+        # Commit at every 32nd render
         commit_flag = not i % commit_interval
 
         if commit_flag:
-            con.commit()
+            commit()
 
     # If loop exited without commiting remaining stuff
     if commit_flag == False:
-        con.commit()
+        commit()
 
     con.close()
 
@@ -130,14 +174,14 @@ def main(n: int, bbox_modes: Sequence[str]) -> None:
 def set_attrs_device(target_device: str) -> None:
     """target_device can be CUDA or CPU"""
     assert target_device in ("CUDA", "CPU")
-    print('Note: Eevee only supports GPU, so setting GPU will only affect CYCLES')
+    print("Note: Eevee only supports GPU, so setting GPU will only affect CYCLES")
     print(f"Specified target device: {target_device}")
     print("Getting hardware devices:")
     # YOU NEED TO DO THIS SO THAT BLENDER LOADS AVAILABLE DEVICES!!!
     bpy.context.preferences.addons["cycles"].preferences.get_devices()
-    devices:Iterable = bpy.context.preferences.addons["cycles"].preferences.devices
+    devices: Iterable = bpy.context.preferences.addons["cycles"].preferences.devices
     for d in devices:
-        print('\t',d.id)
+        print("\t", d.id)
     try:
         bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
         for device in devices:
@@ -155,7 +199,7 @@ def set_attrs_device(target_device: str) -> None:
         bpy.context.scene.cycles.device = "GPU"
     else:
         bpy.context.scene.cycles.device = "CPU"
-    print(f"Cycles device is now preemptively set to {bpy.context.scene.cycles.device}")
+    print(f"Cycles device is now preemptively set to: {bpy.context.scene.cycles.device}")
 
 
 @section("Engine")
@@ -163,13 +207,13 @@ def set_attrs_engine(engine: str, samples: int) -> None:
     assert engine in ("BLENDER_EEVEE", "CYCLES")
 
     bpy.context.scene.render.engine = engine
-    print(f"Render engine is now set to {bpy.context.scene.render.engine}")
+    print(f"Render engine is now set to: {bpy.context.scene.render.engine}")
 
     if engine == "CYCLES":
         bpy.context.scene.cycles.progressive = "BRANCHED_PATH"
         bpy.context.scene.cycles.samples = samples  # .samples for PATH tracing, not really used
         bpy.context.scene.cycles.aa_samples = samples  # .aa_samples for BRANCHED_PATH tracing
-        print(f"Cycles is set to {bpy.context.scene.cycles.progressive}")
+        print(f"Cycles is set to: {bpy.context.scene.cycles.progressive}")
         print(f"Cycles will render with {bpy.context.scene.cycles.aa_samples} samples")
     elif engine == "BLENDER_EEVEE":
         # EEVEE only works with GPU, no need to explicitly set GPU usage
@@ -182,6 +226,7 @@ def set_attrs_view(mode: str):
     camera = bpy.data.objects["Camera"]
     if mode == "stereo":
         bpy.context.scene.render.use_multiview = True
+        bpy.context.scene.render.views_format = 'STEREO_3D'
         bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
         bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
         camera.data.stereo.interocular_distance = 1
@@ -189,7 +234,8 @@ def set_attrs_view(mode: str):
     elif mode == "single":
         bpy.context.scene.render.use_multiview = False
 
-    print(f"Stereo mode is set to: {bpy.context.scene.render.use_multiview}")
+    print(f"Multiview is set to: {bpy.context.scene.render.use_multiview}")
+    print(f"Views format is set to: {bpy.context.scene.render.views_format}")
     camera.data.lens_unit = "FOV"
     camera.data.angle = 1.0471975803375244  # 60 degrees in radians
     camera.data.clip_start = 0.0001
@@ -199,7 +245,7 @@ def set_attrs_view(mode: str):
 
 @section("Clear data")
 def clear_generated_data():
-    '''Removes the directory cng.GENEREATED_DATA_DIR'''
+    """Removes the directory cng.GENEREATED_DATA_DIR"""
     print("Clearing generated data")
     import errno, stat, shutil
 
@@ -216,29 +262,50 @@ def clear_generated_data():
 
     shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=False, onerror=handleRemoveReadonly)
 
+
+def handle_clear(clear: bool, clear_exit: bool):
+    if (clear or clear_exit) == True:
+        clear_generated_data()
+        if clear_exit == True:
+            print("Exiting")
+            exit()
+
+
+def handle_bbox(bbox: str):
+    if bbox == "all":
+        bbox_ = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ)
+    else:
+        bbox_ = (args.bbox,)
+    return bbox_
+
+
 @section("Show reference")
 def show_reference(hide: bool) -> None:
-    """Show reference collection or not. Reference collection contains object used to sanity 
-    check Blender stuff. 
+    """Show reference collection or not. Reference collection contains object used to sanity
+    check Blender stuff.
 
     Parameters
     ----------
     hide : bool
     """
     bpy.data.collections[cng.REF_CLTN].hide_render = hide
-    print(f'Render objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}')
+    print(
+        f"Render objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}"
+    )
+
 
 if __name__ == "__main__":
     print_boxed(
-        "FISH GENERATION BABYYY", 
-        f"Blender version: {bpy.app.version_string}", 
+        "FISH GENERATION BABYYY",
+        f"Blender version: {bpy.app.version_string}",
         f"Python version: {sys.version.split()[0]}",
-        end="\n\n")
+        end="\n\n",
+    )
 
     parser = utils.ArgumentParserForBlender()
 
     parser.add_argument(
-        "n_imgs", help="Number of images to generate", type=int, nargs="?", default=1
+        "n_imgs", help="Number of images to generate, default 1", type=int, nargs="?", default=1
     )
 
     parser.add_argument(
@@ -257,7 +324,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d",
         "--device",
-        help="Specify Blender target hardware",
+        help=f"Specify Blender target hardware, defults: {cng.ARGS_DEFAULT_DEVICE}",
         choices=("CUDA", "CPU"),
         default=cng.ARGS_DEFAULT_DEVICE,
         const=cng.ARGS_DEFAULT_DEVICE,
@@ -289,31 +356,26 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--view-mode",
-        help="Set render mode between stereo or single",
+        help=f"Set render mode between stereo or single, default: {cng.ARGS_DEFAULT_VIEW_MODE}",
         choices=("stereo", "single"),
         default=cng.ARGS_DEFAULT_VIEW_MODE,
         const=cng.ARGS_DEFAULT_VIEW_MODE,
         nargs="?",
     )
 
+    parser.add_argument(
+        "-w",
+        "--wait",
+        help="Ask for user to press enter before starting rendering process",
+        action="store_true",
+    )
+
     args = parser.parse_args()
-
-    if args.clear == True:
-        clear_generated_data()
-
-    if args.clear_exit == True:
-        clear_generated_data()
-        exit()
-
-    bbox = None
-    if args.bbox == "all":
-        bbox = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ)
-    else:
-        bbox = (args.bbox,)
 
     set_attrs_device(args.device)
     set_attrs_engine(args.engine, args.samples)
     set_attrs_view(args.view_mode)
     show_reference(args.reference)
+    handle_clear(args.clear, args.clear_exit)
 
-    main(args.n_imgs, bbox)
+    main(args.n_imgs, handle_bbox(args.bbox), args.wait)

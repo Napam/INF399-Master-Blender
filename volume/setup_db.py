@@ -38,8 +38,8 @@ class DatabaseMaker:
         self.cursor.execute(
             f"""
             CREATE TABLE {cng.BBOX_DB_TABLE_CPS} (
-                imgnr INTEGER NOT NULL,
-                class_ INTEGER NOT NULL,
+                {cng.BBOX_DB_IMGRNR} INTEGER NOT NULL,
+                {cng.BBOX_DB_CLASS} INTEGER NOT NULL,
                 p1_x FLOAT(3) NOT NULL,
                 p1_y FLOAT(3) NOT NULL,
                 p1_z FLOAT(3) NOT NULL,
@@ -76,8 +76,8 @@ class DatabaseMaker:
         self.cursor.execute(
             f"""
             CREATE TABLE {cng.BBOX_DB_TABLE_XYZ} (
-                imgnr INTEGER NOT NULL,
-                class_ INTEGER NOT NULL,
+                {cng.BBOX_DB_IMGRNR} INTEGER NOT NULL,
+                {cng.BBOX_DB_CLASS} INTEGER NOT NULL,
                 x FLOAT(4) NOT NULL,
                 y FLOAT(4) NOT NULL,
                 z FLOAT(4) NOT NULL

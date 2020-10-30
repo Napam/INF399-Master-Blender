@@ -169,7 +169,7 @@ class DatadumpVisitor(Scenevisitor):
             self.bbox_modes = (cng.DEFAULT_BBOX_MODE,)
 
         # THE CODE BELOW DOES NOT WORK SINCE WHEN YOU GIVE A VARIABLE IN A FUNCTION CALL
-        # PYTHON WILL REMEMBER IS A POINTER TO THE VARIBLE INSTEAD OF DEREFERENCING POINTER
+        # PYTHON WILL REMEMBER IT AS A POINTER TO THE VARIBLE INSTEAD OF DEREFERENCING THE POINTER
 
         # self.strategy_map = {
         # choice: lambda s: self._db_store(f(s), table)
