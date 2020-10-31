@@ -302,7 +302,7 @@ def show_reference(hide: bool) -> None:
     """
     bpy.data.collections[cng.REF_CLTN].hide_render = hide
     print(
-        f"Render objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}"
+        f"Hide objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}"
     )
 
 
