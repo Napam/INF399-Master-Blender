@@ -22,6 +22,11 @@ class DatabaseMaker:
         # This makes the .db file if not existing
         self.con = db.connect(os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE))
         self.cursor = self.con.cursor()
+        self.table_create_funcs = (
+            self.create_bboxes_cps_table,
+            self.create_bboxes_xyz_table,
+            self.create_bboxes_std_table
+        )
 
     def __del__(self):
         self.close()
@@ -81,6 +86,24 @@ class DatabaseMaker:
                 x FLOAT(4) NOT NULL,
                 y FLOAT(4) NOT NULL,
                 z FLOAT(4) NOT NULL
+            )
+        """
+        )
+    
+    def create_bboxes_std_table(self) -> None:
+        """
+        Creating tables does not require commiting.
+        sqlite3 will raise error if table already exists
+        """
+        self.cursor.execute(
+            f"""
+            CREATE TABLE {cng.BBOX_DB_TABLE_STD} (
+                {cng.BBOX_DB_IMGRNR} INTEGER NOT NULL,
+                {cng.BBOX_DB_CLASS} INTEGER NOT NULL,
+                x FLOAT(4) NOT NULL,
+                y FLOAT(4) NOT NULL,
+                w FLOAT(4) NOT NULL,
+                h FLOAT(4) NOT NULL
             )
         """
         )

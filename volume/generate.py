@@ -120,6 +120,105 @@ def get_max_imgid(cursor: db.Cursor, table: str) -> int:
         return maxid
 
 
+def camera_view_bounds_2d(
+    scene: "bpy.types.Scene", cam_ob: "bpy.types.Object", me_ob: "bpy.types.Object"
+) -> Tuple[int, int, int, int]:
+    """
+    Shamelessly copy pasted from
+    https://blender.stackexchange.com/a/158236/105631
+    Idk how it works, but it works
+
+    Returns camera space bounding box of mesh object.
+
+    Negative 'z' value means the point is behind the camera.
+
+    Takes shift-x/y, lens angle and sensor size into account
+    as well as perspective/ortho projections.
+
+    :arg scene: Scene to use for frame size.
+    :type scene: :class:`bpy.types.Scene`
+    :arg obj: Camera object.
+    :type obj: :class:`bpy.types.Object`
+    :arg me: Untransformed Mesh.
+    :type me: :class:`bpy.types.Mesh´
+    :return: a Box object (call its to_tuple() method to get x, y, width and height)
+    :rtype: :class:tuple
+    """
+
+    mat = cam_ob.matrix_world.normalized().inverted()
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    mesh_eval = me_ob.evaluated_get(depsgraph)
+    me = mesh_eval.to_mesh()
+    me.transform(me_ob.matrix_world)
+    me.transform(mat)
+
+    camera: 'bpy.types.Camera' = cam_ob.data
+    frame = [-v for v in camera.view_frame(scene=scene)[:3]]
+    camera_persp: bool = camera.type != "ORTHO" # True of PERSP
+
+    lx = []
+    ly = []
+
+    min_x: float
+    max_x: float
+    min_y: float
+    max_y: float
+
+    for v in me.vertices:
+        co_local: Sequence[float] = v.co
+        z: float = -co_local.z
+
+        if camera_persp:
+            if z == 0.0:
+                lx.append(0.5)
+                ly.append(0.5)
+            # Does it make any sense to drop these?
+            # if z <= 0.0:
+            #    continue
+            else:
+                frame = [(v / (v.z / z)) for v in frame]
+
+        min_x, max_x = frame[1].x, frame[2].x
+        min_y, max_y = frame[0].y, frame[1].y
+
+        x = (co_local.x - min_x) / (max_x - min_x)
+        y = (co_local.y - min_y) / (max_y - min_y)
+
+        lx.append(x)
+        ly.append(y)
+
+    min_x = np.clip(min(lx), 0.0, 1.0)
+    max_x = np.clip(max(lx), 0.0, 1.0)
+    min_y = np.clip(min(ly), 0.0, 1.0)
+    max_y = np.clip(max(ly), 0.0, 1.0)
+
+    mesh_eval.to_mesh_clear()
+
+    # r: 'bpy.types.RenderSettings' = scene.render
+    # fac: float = r.resolution_percentage * 0.01
+    # dim_x: float = r.resolution_x * fac
+    # dim_y: float = r.resolution_y * fac
+
+
+    # Sanity check
+    # if round((max_x - min_x) * dim_x) == 0 or round((max_y - min_y) * dim_y) == 0:
+    #     return (0, 0, 0, 0)
+
+    return (
+        round(min_x, 4),  # X
+        round(1 - max_y, 4),  # Y
+        round((max_x - min_x), 4),  # Width
+        round((max_y - min_y), 4),  # Height
+    )
+
+    return (
+        int(round(min_x * dim_x)),  # X
+        int(round(dim_y - max_y * dim_y)),  # Y
+        int(round((max_x - min_x) * dim_x)),  # Width
+        int(round((max_y - min_y) * dim_y)),  # Height
+    )
+
+
 class Scenevisitor(metaclass=abc.ABCMeta):
     """
     Scenevisitor interface
@@ -185,6 +284,9 @@ class DatadumpVisitor(Scenevisitor):
             ),
             cng.BBOX_MODE_XYZ: lambda s: self._db_store(
                 self.extract_labels_xyz(s), cng.BBOX_DB_TABLE_XYZ
+            ),
+            cng.BBOX_MODE_STD: lambda s: self._db_store(
+                self.extract_labels_std(s), cng.BBOX_DB_TABLE_STD
             ),
         }
 
@@ -277,7 +379,33 @@ class DatadumpVisitor(Scenevisitor):
 
         return boxes_list
 
-    def visit(self, scene: "Scenemaker"):
+    @staticmethod
+    def extract_labels_std(scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
+        """
+        Gets labels
+
+        Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
+        etc.
+
+        Returns
+        -------
+        boxes_list = [(class, box), (class, box), ...]
+        """
+        objects = utils.select_collection(scene.target_collection)
+        camera = bpy.data.objects[cng.CAMERA_OBJ]
+        boxes_list = []
+        for obj in objects:
+            objclass = obj.name.split(".")[0]
+            box = camera_view_bounds_2d(
+                scene=bpy.context.scene,
+                cam_ob=camera,
+                me_ob=obj
+            )
+            boxes_list.append((scene.name2num[objclass], np.array(box)))
+
+        return boxes_list
+
+    def visit(self, scene: "Scenemaker") -> None:
         """
         Visit scene
         """
@@ -336,16 +464,16 @@ class Scenemaker:
         for obj, loc, rot in zip(src_samples, locs, rots):
             new_obj = obj.copy()
 
-            ##############################
-            # Set object attributes here #
-            ##############################
+            ##################################
+            ### Set object attributes here ###
+            ##################################
             new_obj.location = loc
             new_obj.rotation_euler = rot
             new_obj.scale *= np.random.normal(loc=1, scale=0.1)
             new_obj.show_bounds = True
             new_obj.show_name = False
-            ##############################
-            ##############################
+            ##################################
+            ##################################
 
             # Link to target collection
             self.target_collection.objects.link(new_obj)
