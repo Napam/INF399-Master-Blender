@@ -25,7 +25,7 @@ import generate as gen
 from setup_db import DatabaseMaker
 
 
-def print_boxed(*args: Tuple[str], end="\n"):
+def print_boxed(*args: Tuple[str], end="\n") -> None:
     """I'm a bit extra sometimes u know?"""
     print(f"{'':{cng.BOXED_SYMBOL_TOP}^{cng.HIGHLIGHT_WIDTH}}")
     for info in args:
@@ -68,8 +68,9 @@ def check_generate_datadir() -> None:
         print(f"DB not found, setting up DB at {db_path}")
         # Setup database
         db_ = DatabaseMaker()
-        db_.create_bboxes_cps_table()
-        db_.create_bboxes_xyz_table()
+        # Create all tables
+        for f in db_.table_create_funcs:
+            f()
     else:
         print(f"Found database file: {db_path}")
 
@@ -234,7 +235,7 @@ def set_attrs_engine(engine: str, samples: int) -> None:
 
 
 @section("View mode")
-def set_attrs_view(mode: str):
+def set_attrs_view(mode: str) -> None:
     camera = bpy.data.objects["Camera"]
     if mode == "stereo":
         bpy.context.scene.render.use_multiview = True
@@ -256,7 +257,7 @@ def set_attrs_view(mode: str):
 
 
 @section("Clear data")
-def clear_generated_data():
+def clear_generated_data() -> None:
     """Removes the directory cng.GENEREATED_DATA_DIR"""
     print("Clearing generated data")
     import errno, stat, shutil
@@ -275,7 +276,7 @@ def clear_generated_data():
     shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=False, onerror=handleRemoveReadonly)
 
 
-def handle_clear(clear: bool, clear_exit: bool):
+def handle_clear(clear: bool, clear_exit: bool) -> None:
     if (clear or clear_exit) == True:
         clear_generated_data()
         if clear_exit == True:
@@ -283,9 +284,9 @@ def handle_clear(clear: bool, clear_exit: bool):
             exit()
 
 
-def handle_bbox(bbox: str):
+def handle_bbox(bbox: str) -> Tuple[str]:
     if bbox == "all":
-        bbox_ = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ)
+        bbox_ = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, cng.BBOX_MODE_STD)
     else:
         bbox_ = (args.bbox,)
     return bbox_
@@ -347,16 +348,16 @@ if __name__ == "__main__":
         "-s",
         "--samples",
         help=f"Rendering samples for cycles and eevee, default {cng.ARGS_DEFAULT_RENDER_SAMPLES}",
+        default=cng.ARGS_DEFAULT_RENDER_SAMPLES,
         type=int,
         nargs="?",
-        default=cng.ARGS_DEFAULT_RENDER_SAMPLES,
     )
 
     parser.add_argument(
         "-b",
         "--bbox",
         help=f"Bounding box type to be stored in SQL database, default: {cng.ARGS_DEFAULT_BBOX_MODE}",
-        choices=(cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, "all"),
+        choices=(cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, cng.BBOX_MODE_STD, "all"),
         default=cng.ARGS_DEFAULT_BBOX_MODE,
         const=cng.ARGS_DEFAULT_BBOX_MODE,
         nargs="?",
