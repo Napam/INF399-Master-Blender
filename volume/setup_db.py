@@ -112,7 +112,8 @@ class DatabaseMaker:
 if __name__ == "__main__":
     # Create folder if not exist
     # pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
-    # db_ = DatabaseMaker()
+    db_ = DatabaseMaker()
     # db_.create_bboxes_cps_table()
     # db_.create_bboxes_xyz_table()
+    # db_.create_bboxes_std_table()
     pass

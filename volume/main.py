@@ -135,7 +135,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
     imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
 
     print_boxed(
-        f"Rendering information:",
+        "Rendering information:",
         f"Imgs to render: {n}",
         f"Starting at index: {maxid}",
         f"Saves images at: {os.path.join(cng.GENERATED_DATA_DIR, cng.IMAGE_DIR)}",
@@ -255,7 +255,6 @@ def set_attrs_view(mode: str) -> None:
     camera.data.clip_end = 1000
     print(f"Camera attributes are set to hardcoded values")
 
-
 @section("Clear data")
 def clear_generated_data() -> None:
     """Removes the directory cng.GENEREATED_DATA_DIR"""
@@ -275,6 +274,8 @@ def clear_generated_data() -> None:
 
     shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=False, onerror=handleRemoveReadonly)
 
+def set_attrs_dir(dir_: str) -> None:
+    cng.GENERATED_DATA_DIR = dir_
 
 def handle_clear(clear: bool, clear_exit: bool) -> None:
     if (clear or clear_exit) == True:
@@ -382,9 +383,16 @@ if __name__ == "__main__":
         help="Ask for user to press enter before starting rendering process",
         action="store_true",
     )
+    
+    parser.add_argument(
+        "--dir",
+        help=f"Specify dir for generated data, default: {cng.GENERATED_DATA_DIR}",
+        default=cng.GENERATED_DATA_DIR,
+    )
 
     args = parser.parse_args()
 
+    set_attrs_dir(args.dir)
     set_attrs_device(args.device)
     set_attrs_engine(args.engine, args.samples)
     set_attrs_view(args.view_mode)

@@ -148,9 +148,10 @@ def camera_view_bounds_2d(
     mat = cam_ob.matrix_world.normalized().inverted()
     depsgraph = bpy.context.evaluated_depsgraph_get()
     mesh_eval = me_ob.evaluated_get(depsgraph)
-    me = mesh_eval.to_mesh()
+    me = mesh_eval.to_mesh() # Crashes
     me.transform(me_ob.matrix_world)
     me.transform(mat)
+
 
     camera: 'bpy.types.Camera' = cam_ob.data
     frame = [-v for v in camera.view_frame(scene=scene)[:3]]
@@ -403,6 +404,7 @@ class DatadumpVisitor(Scenevisitor):
             )
             boxes_list.append((scene.name2num[objclass], np.array(box)))
 
+        print('STD!!!')
         return boxes_list
 
     def visit(self, scene: "Scenemaker") -> None:

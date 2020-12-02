@@ -18,8 +18,9 @@ done
 # $@ is an array or something, start at $OPTIND and rest
 ARGS+=${@:$OPTIND}
 
-docker run ${DOCKER_FLAGS} -it -v "$(pwd)/volume":/app \
-        --ipc=host --rm --name blender-nam012-cntr nam012-blender ${ARGS}
+docker run ${DOCKER_FLAGS} -it \
+        -v "$(pwd)/volume":/app \
+        --rm --name blender-nam012-cntr nam012-blender ${ARGS}
 
 
 

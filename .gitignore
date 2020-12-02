@@ -29,6 +29,7 @@ __pycache__
 
 # Generated data
 *volume/generated_data
+*volume/objdet_std_data
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
