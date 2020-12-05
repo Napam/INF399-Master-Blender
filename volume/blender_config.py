@@ -27,6 +27,7 @@ IMAGE_NAME = "img"
 DEFAULT_FILEFORMAT = "PNG"  # This is what you give to Blender, the actual file extension is:
 DEFAULT_FILEFORMAT_EXTENSION = ".png"  # The actual file extension in file system
 BBOX_DB_FILE = "bboxes.db"
+METADATA_FILE = "metadata.txt"
 BBOX_DB_IMGRNR = "imgnr"  # Column name for image id
 BBOX_DB_CLASS = "class_"  # Column name for classes
 BBOX_MODE_CPS = "cps" # Cornerponts
@@ -46,7 +47,7 @@ ARGS_DEFAULT_BBOX_MODE = "all"  # [BBOX_MODE_CPS, BBOX_MODE_XYZ, 'all']
 ARGS_DEFAULT_VIEW_MODE = "stereo"  # [stereo, single]
 
 """INFO"""
-HIGHLIGHT_WIDTH = 70
+HIGHLIGHT_MIN_WIDTH = 70
 BOXED_SYMBOL_TOP = "="  # Only single char
 BOXED_SYMBOL_BOTTOM = "="  # Only single char
 BOXED_STR_SIDE = "||"  # Can be string

@@ -11,6 +11,8 @@ import bpy
 import numpy as np
 
 # Add local files ty pythondir in order to import relative files
+# This is solves a problem that occurs when running code from internal
+# Blender code editor
 dir_ = os.path.dirname(bpy.data.filepath)
 if dir_ not in sys.path:
     sys.path.append(dir_)
@@ -27,12 +29,18 @@ from setup_db import DatabaseMaker
 
 def print_boxed(*args: Tuple[str], end="\n") -> None:
     """I'm a bit extra sometimes u know?"""
-    print(f"{'':{cng.BOXED_SYMBOL_TOP}^{cng.HIGHLIGHT_WIDTH}}")
+
+    width = max(
+        max(map(len, args))+2*len(cng.BOXED_STR_SIDE)+2, 
+        cng.HIGHLIGHT_MIN_WIDTH
+    )
+    
+    print(f"{'':{cng.BOXED_SYMBOL_TOP}^{width}}")
     for info in args:
         print(
-            f"{cng.BOXED_STR_SIDE}{info:^{cng.HIGHLIGHT_WIDTH-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}"
+            f"{cng.BOXED_STR_SIDE}{info:^{width-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}"
         )
-    print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{cng.HIGHLIGHT_WIDTH}}", end=end)
+    print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{width}}", end=end)
 
 
 def section(info: str) -> Callable:
@@ -40,7 +48,7 @@ def section(info: str) -> Callable:
 
     def section_decorator(f: Callable) -> Callable:
         def wrapper(*args, **kwargs) -> Any:
-            print(f"{f' {info} ':{cng.SECTION_SYMBOL}^{cng.HIGHLIGHT_WIDTH}}")
+            print(f"{f' {info} ':{cng.SECTION_SYMBOL}^{cng.HIGHLIGHT_MIN_WIDTH}}")
             print(end=cng.SECTION_START_STR)
             result = f(*args, **kwargs)
             print(end=cng.SECTION_END_STR)
@@ -96,10 +104,10 @@ def assert_image_saved(filepath: str) -> None:
         if not (l_exists and r_exists):
             raise FileNotFoundError(errormsgs)
     else:
-        path = filepath + cng.DEFAULT_FILEFORMAT
-        file_exists = os.path.exists(os.path.exists(path))
+        path = filepath + cng.DEFAULT_FILEFORMAT_EXTENSION
+        file_exists = os.path.exists(path)
         if not file_exists:
-            raise FileNotFoundError(f"Image not found, expected to find: {path}")
+            raise FileNotFoundError(f"Image not found, expected to find: \n\t{path}")
 
 
 def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
@@ -140,6 +148,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
         f"Starting at index: {maxid}",
         f"Saves images at: {os.path.join(cng.GENERATED_DATA_DIR, cng.IMAGE_DIR)}",
         f"Sqlite3 DB at: {os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)}",
+        f"Metadata at: {os.path.join(cng.GENERATED_DATA_DIR, cng.METADATA_FILE)}",
         f"bbox_modes: {bbox_modes}",
     )
 
@@ -158,6 +167,10 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
         scene.generate_scene(np.random.randint(1, 6))
         imgfilepath = imgpath + str(i)
         utils.render_and_save(imgfilepath)
+
+        print_boxed(
+            'DONE RENDERING'
+        )
 
         try:
             assert_image_saved(imgfilepath)

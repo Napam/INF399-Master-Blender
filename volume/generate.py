@@ -98,7 +98,7 @@ def create_metadata(scene: "Scenemaker") -> None:
     """
     create_datadir()
 
-    with open(dirpath / cng.GENERATED_DATA_DIR / "metadata.txt", "w+") as f:
+    with open(dirpath / cng.GENERATED_DATA_DIR / cng.METADATA_FILE, "w+") as f:
         f.write(str(scene.num2name))
 
 
@@ -404,7 +404,6 @@ class DatadumpVisitor(Scenevisitor):
             )
             boxes_list.append((scene.name2num[objclass], np.array(box)))
 
-        print('STD!!!')
         return boxes_list
 
     def visit(self, scene: "Scenemaker") -> None:
