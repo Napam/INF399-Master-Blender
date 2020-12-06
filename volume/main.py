@@ -30,16 +30,11 @@ from setup_db import DatabaseMaker
 def print_boxed(*args: Tuple[str], end="\n") -> None:
     """I'm a bit extra sometimes u know?"""
 
-    width = max(
-        max(map(len, args))+2*len(cng.BOXED_STR_SIDE)+2, 
-        cng.HIGHLIGHT_MIN_WIDTH
-    )
-    
+    width = max(max(map(len, args)) + 2 * len(cng.BOXED_STR_SIDE) + 2, cng.HIGHLIGHT_MIN_WIDTH)
+
     print(f"{'':{cng.BOXED_SYMBOL_TOP}^{width}}")
     for info in args:
-        print(
-            f"{cng.BOXED_STR_SIDE}{info:^{width-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}"
-        )
+        print(f"{cng.BOXED_STR_SIDE}{info:^{width-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}")
     print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{width}}", end=end)
 
 
@@ -90,6 +85,7 @@ def assert_image_saved(filepath: str) -> None:
     """
     errormsgs = "Render results are missing:"
     if bpy.context.scene.render.use_multiview:
+        print('Asserting multiview output')
         l_path = filepath + f"{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
         r_path = filepath + f"{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
 
@@ -97,13 +93,14 @@ def assert_image_saved(filepath: str) -> None:
         r_exists = os.path.exists(r_path)
 
         if not l_exists:
-            errormsgs += f"\nLeft image not found, expected to find: {l_path}"
+            errormsgs += f"\nLeft image not found, expected to find: \n\t{l_path}"
         if not r_exists:
-            errormsgs += f"\nRight image not found, expected to find: {r_path}"
+            errormsgs += f"\nRight image not found, expected to find: \n\t{r_path}"
 
         if not (l_exists and r_exists):
             raise FileNotFoundError(errormsgs)
     else:
+        print('Asserting singleview output')
         path = filepath + cng.DEFAULT_FILEFORMAT_EXTENSION
         file_exists = os.path.exists(path)
         if not file_exists:
@@ -143,9 +140,10 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
     imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
 
     print_boxed(
-        "Rendering information:",
+        "Output information:",
         f"Imgs to render: {n}",
         f"Starting at index: {maxid}",
+        f"Ends at index: {maxid+n-1}",
         f"Saves images at: {os.path.join(cng.GENERATED_DATA_DIR, cng.IMAGE_DIR)}",
         f"Sqlite3 DB at: {os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)}",
         f"Metadata at: {os.path.join(cng.GENERATED_DATA_DIR, cng.METADATA_FILE)}",
@@ -163,14 +161,13 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
 
     commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
+
         scene.clear()
         scene.generate_scene(np.random.randint(1, 6))
         imgfilepath = imgpath + str(i)
+        print(f'Starting to render imgnr {i}')
         utils.render_and_save(imgfilepath)
-
-        print_boxed(
-            'DONE RENDERING'
-        )
+        print(f'Returned from rendering imgnr {i}')
 
         try:
             assert_image_saved(imgfilepath)
@@ -268,6 +265,7 @@ def set_attrs_view(mode: str) -> None:
     camera.data.clip_end = 1000
     print(f"Camera attributes are set to hardcoded values")
 
+
 @section("Clear data")
 def clear_generated_data() -> None:
     """Removes the directory cng.GENEREATED_DATA_DIR"""
@@ -287,8 +285,10 @@ def clear_generated_data() -> None:
 
     shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=False, onerror=handleRemoveReadonly)
 
+
 def set_attrs_dir(dir_: str) -> None:
     cng.GENERATED_DATA_DIR = dir_
+
 
 def handle_clear(clear: bool, clear_exit: bool) -> None:
     if (clear or clear_exit) == True:
@@ -316,9 +316,7 @@ def show_reference(hide: bool) -> None:
     hide : bool
     """
     bpy.data.collections[cng.REF_CLTN].hide_render = hide
-    print(
-        f"Hide objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}"
-    )
+    print(f"Hide objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}")
 
 
 if __name__ == "__main__":
@@ -396,7 +394,7 @@ if __name__ == "__main__":
         help="Ask for user to press enter before starting rendering process",
         action="store_true",
     )
-    
+
     parser.add_argument(
         "--dir",
         help=f"Specify dir for generated data, default: {cng.GENERATED_DATA_DIR}",
