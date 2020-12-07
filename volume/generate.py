@@ -147,11 +147,10 @@ def camera_view_bounds_2d(
 
     mat = cam_ob.matrix_world.normalized().inverted()
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    mesh_eval = me_ob.evaluated_get(depsgraph)
-    me = mesh_eval.to_mesh() # Crashes
+    mesh_eval = me_ob.copy().evaluated_get(depsgraph) # Must use copy or segfault on Linux build
+    me = mesh_eval.to_mesh() # Crashes on Linux build, see above comment for fix
     me.transform(me_ob.matrix_world)
     me.transform(mat)
-
 
     camera: 'bpy.types.Camera' = cam_ob.data
     frame = [-v for v in camera.view_frame(scene=scene)[:3]]
