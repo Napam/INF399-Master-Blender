@@ -8,12 +8,18 @@ Written by Naphat Amundsen
 
 from numpy import pi
 
+# There are names of Blender objects in this file, the Blender must manually be set to corresponding
+# names
+
 """generate.py"""
 SRC_CLTN = "Fishes"  # Collection of original objects
 TRGT_CLTN = "Copies"  # Collection of copies (to be rendered)
 REF_CLTN = "Reference"  # Collection of reference item, used to sanity check renders
+CAM_CLTN = "Cameras"  # Collection of camera objects
 SPAWNBOX_OBJ = "spawnbox"  # Spawnbox object, representing the spawn area
-CAMERA_OBJ = "Camera" # Camera object used to "capture"
+CAMERA_OBJ_CENTER = "camera_C" # Name of center camera object, should be same name in Blender file
+CAMERA_OBJ_LEFT = "camera_L" # Name of left camera object, should be same name in Blender file
+CAMERA_OBJ_RIGHT = "camera_R" # Name of right camera object, should be same name in Blender file
 ROT_MUS = [pi / 2, 0, pi]
 ROT_STDS = [0.5, 1, 1]
 DEFAULT_BBOX_MODE = "xyz"  # cps xyz
@@ -35,16 +41,20 @@ BBOX_MODE_XYZ = "xyz" # Lengths in x, y, z dimension
 BBOX_MODE_STD = "std" # Standard 2D bbox for object detection 
 BBOX_DB_TABLE_XYZ = "bboxes_xyz"  # Length width height
 BBOX_DB_TABLE_CPS = "bboxes_cps"  # Corner points
-BBOX_DB_TABLE_STD = "bboxes_std"  # Corner points
-FILE_SUFFIX_LEFT = "_L"
+BBOX_DB_TABLE_STD = "bboxes_std"  # Standard bounding boxes
+FILE_SUFFIX_CENTER = "_C" 
+FILE_SUFFIX_LEFT = "_L" # Rendering only from one direction will not generate file suffixes
 FILE_SUFFIX_RIGHT = "_R"
+RENDER_RES_X = 416 # Render res is atm or documentation only, the code wont use it atm
+RENDER_RES_Y = 416
 
 """CLI"""
 ARGS_DEFAULT_ENGINE = "CYCLES"  # [BLENDER_EEVEE, CYCLES]
 ARGS_DEFAULT_DEVICE = "CUDA"
 ARGS_DEFAULT_RENDER_SAMPLES = 96
 ARGS_DEFAULT_BBOX_MODE = "all"  # [BBOX_MODE_CPS, BBOX_MODE_XYZ, 'all']
-ARGS_DEFAULT_VIEW_MODE = "stereo"  # [stereo, single]
+ARGS_DEFAULT_VIEW_MODE = "leftright"  # [leftright, center]
+ARGS_DEFAULT_STDBBOX_CAM = "left" 
 
 """INFO"""
 HIGHLIGHT_MIN_WIDTH = 70

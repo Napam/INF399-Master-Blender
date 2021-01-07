@@ -121,7 +121,7 @@ def get_max_imgid(cursor: db.Cursor, table: str) -> int:
 
 
 def camera_view_bounds_2d(
-    scene: "bpy.types.Scene", cam_ob: "bpy.types.Object", me_ob: "bpy.types.Object"
+    scene: bpy.types.Scene, cam_ob: bpy.types.Object, me_ob: bpy.types.Object
 ) -> Tuple[int, int, int, int]:
     """
     Shamelessly copy pasted from
@@ -147,14 +147,14 @@ def camera_view_bounds_2d(
 
     mat = cam_ob.matrix_world.normalized().inverted()
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    mesh_eval = me_ob.copy().evaluated_get(depsgraph) # Must use copy or segfault on Linux build
-    me = mesh_eval.to_mesh() # Crashes on Linux build, see above comment for fix
+    mesh_eval = me_ob.copy().evaluated_get(depsgraph)  # Must use copy or segfault on Linux build
+    me = mesh_eval.to_mesh()  # Crashes on Linux build, see above comment for fix
     me.transform(me_ob.matrix_world)
     me.transform(mat)
 
-    camera: 'bpy.types.Camera' = cam_ob.data
+    camera: bpy.types.Camera = cam_ob.data
     frame = [-v for v in camera.view_frame(scene=scene)[:3]]
-    camera_persp: bool = camera.type != "ORTHO" # True of PERSP
+    camera_persp: bool = camera.type != "ORTHO"  # True of PERSP
 
     lx = []
     ly = []
@@ -199,7 +199,6 @@ def camera_view_bounds_2d(
     # dim_x: float = r.resolution_x * fac
     # dim_y: float = r.resolution_y * fac
 
-
     # Sanity check
     # if round((max_x - min_x) * dim_x) == 0 or round((max_y - min_y) * dim_y) == 0:
     #     return (0, 0, 0, 0)
@@ -239,16 +238,20 @@ class DatadumpVisitor(Scenevisitor):
 
     def __init__(
         self,
+        stdbboxcam: bpy.types.Object,
         bbox_modes: Optional[Sequence[str]] = None,
         cursor: Optional[db.Cursor] = None,
     ) -> None:
         """
         Parameters:
         -----------
+        stdbboxcam: bpy.types.Object, camera object that should be used to calculate standard
+                    bounding boxes. The function needs a reference
+
         bbox_mode: Optional[str], mode to save to SQL. Available: cps, xyz
 
         table: Optional str, name of table, if None, then use table specified
-                  in config file
+               in config file
 
         con: Optional sqlite3.connection, if None, then connection is established
              using information from config file. Changes will be committed and
@@ -266,6 +269,8 @@ class DatadumpVisitor(Scenevisitor):
         self.bbox_modes = bbox_modes
         if self.bbox_modes is None:
             self.bbox_modes = (cng.DEFAULT_BBOX_MODE,)
+
+        self.stdbboxcam = stdbboxcam
 
         # THE CODE BELOW DOES NOT WORK SINCE WHEN YOU GIVE A VARIABLE IN A FUNCTION CALL
         # PYTHON WILL REMEMBER IT AS A POINTER TO THE VARIBLE INSTEAD OF DEREFERENCING THE POINTER
@@ -338,7 +343,7 @@ class DatadumpVisitor(Scenevisitor):
         Gets labels
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
-        etc.
+        etc. Blender 2.83 does this automatically at least
 
         Returns
         -------
@@ -363,7 +368,7 @@ class DatadumpVisitor(Scenevisitor):
         Gets labels
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
-        etc.
+        etc. Blender 2.83 does this automatically at least
 
         Returns
         -------
@@ -379,28 +384,23 @@ class DatadumpVisitor(Scenevisitor):
 
         return boxes_list
 
-    @staticmethod
-    def extract_labels_std(scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
+    def extract_labels_std(self, scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
         """
         Gets labels
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
-        etc.
+        etc. Blender 2.83 does this automatically at least
 
         Returns
         -------
         boxes_list = [(class, box), (class, box), ...]
         """
         objects = utils.select_collection(scene.target_collection)
-        camera = bpy.data.objects[cng.CAMERA_OBJ]
+        camera = self.stdbboxcam
         boxes_list = []
         for obj in objects:
             objclass = obj.name.split(".")[0]
-            box = camera_view_bounds_2d(
-                scene=bpy.context.scene,
-                cam_ob=camera,
-                me_ob=obj
-            )
+            box = camera_view_bounds_2d(scene=bpy.context.scene, cam_ob=camera, me_ob=obj)
             boxes_list.append((scene.name2num[objclass], np.array(box)))
 
         return boxes_list
@@ -441,7 +441,7 @@ class Scenemaker:
 
         self.src_collection = bpy.data.collections[src_collection]
         self.target_collection = bpy.data.collections[target_collection]
-        self.src_objects = list(bpy.data.collections[src_collection].all_objects)
+        self.src_objects = tuple(bpy.data.collections[src_collection].all_objects)
 
         # Will update classdict in-place
         self.create_classdict()

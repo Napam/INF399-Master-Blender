@@ -1,0 +1,3 @@
+Order of metadata dictionary (stored in code in generated_data/metadata.txt) is the order the objects
+are stored in the blender collection. Not sure if it is part of Blender specification to retrieve
+collection in the same order as displayed, watch out in newer versions. 

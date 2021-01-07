@@ -25,6 +25,7 @@ import blender_utils as utils
 
 import generate as gen
 from setup_db import DatabaseMaker
+import functools
 
 
 def print_boxed(*args: Tuple[str], end="\n") -> None:
@@ -42,6 +43,7 @@ def section(info: str) -> Callable:
     """Decorator that takes in argument for informative text"""
 
     def section_decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
         def wrapper(*args, **kwargs) -> Any:
             print(f"{f' {info} ':{cng.SECTION_SYMBOL}^{cng.HIGHLIGHT_MIN_WIDTH}}")
             print(end=cng.SECTION_START_STR)
@@ -60,7 +62,7 @@ def check_generate_datadir() -> None:
     # If generated data directory does NOT exit
     if not os.path.isdir(cng.GENERATED_DATA_DIR):
         # Create directory
-        print(f"Directery for generated data not found")
+        print(f"Directory for generated data not found")
         print(f"Creating directory for generated data: {cng.GENERATED_DATA_DIR}")
         pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
     else:
@@ -85,7 +87,7 @@ def assert_image_saved(filepath: str) -> None:
     """
     errormsgs = "Render results are missing:"
     if bpy.context.scene.render.use_multiview:
-        print('Asserting multiview output')
+        print("Asserting multiview output")
         l_path = filepath + f"{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
         r_path = filepath + f"{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
 
@@ -100,14 +102,14 @@ def assert_image_saved(filepath: str) -> None:
         if not (l_exists and r_exists):
             raise FileNotFoundError(errormsgs)
     else:
-        print('Asserting singleview output')
+        print("Asserting singleview output")
         path = filepath + cng.DEFAULT_FILEFORMAT_EXTENSION
         file_exists = os.path.exists(path)
         if not file_exists:
             raise FileNotFoundError(f"Image not found, expected to find: \n\t{path}")
 
 
-def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
+def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Object) -> None:
     """Main function for generating data with Blender
 
     Parameters
@@ -124,7 +126,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
     con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
     cursor = con.cursor()
 
-    datavisitor = gen.DatadumpVisitor(bbox_modes=bbox_modes, cursor=cursor)
+    datavisitor = gen.DatadumpVisitor(stdbboxcam=stdbboxcam, bbox_modes=bbox_modes, cursor=cursor)
 
     maxids = [
         gen.get_max_imgid(cursor, table) for table in (cng.BBOX_DB_TABLE_CPS, cng.BBOX_DB_TABLE_XYZ)
@@ -165,9 +167,9 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool) -> None:
         scene.clear()
         scene.generate_scene(np.random.randint(1, 6))
         imgfilepath = imgpath + str(i)
-        print(f'Starting to render imgnr {i}')
+        print(f"Starting to render imgnr {i}")
         utils.render_and_save(imgfilepath)
-        print(f'Returned from rendering imgnr {i}')
+        print(f"Returned from rendering imgnr {i}")
 
         try:
             assert_image_saved(imgfilepath)
@@ -234,7 +236,7 @@ def set_attrs_engine(engine: str, samples: int) -> None:
 
     if engine == "CYCLES":
         bpy.context.scene.cycles.progressive = "BRANCHED_PATH"
-        bpy.context.scene.cycles.samples = samples  # .samples for PATH tracing, not really used
+        bpy.context.scene.cycles.samples = samples  # .samples for PATH tracing, not r eally used
         bpy.context.scene.cycles.aa_samples = samples  # .aa_samples for BRANCHED_PATH tracing
         print(f"Cycles is set to: {bpy.context.scene.cycles.progressive}")
         print(f"Cycles will render with {bpy.context.scene.cycles.aa_samples} samples")
@@ -246,24 +248,36 @@ def set_attrs_engine(engine: str, samples: int) -> None:
 
 @section("View mode")
 def set_attrs_view(mode: str) -> None:
-    camera = bpy.data.objects["Camera"]
-    if mode == "stereo":
-        bpy.context.scene.render.use_multiview = True
-        bpy.context.scene.render.views_format = "STEREO_3D"
-        bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
-        bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
-        camera.data.stereo.interocular_distance = 1
-        camera.data.stereo.pivot = "CENTER"
-    elif mode == "single":
-        bpy.context.scene.render.use_multiview = False
+    bpy.context.scene.render.use_multiview = True
+    bpy.context.scene.render.views_format = "MULTIVIEW"
+    bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
+    bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
+    bpy.context.scene.render.views["center"].file_suffix = cng.FILE_SUFFIX_CENTER
 
-    print(f"Multiview is set to: {bpy.context.scene.render.use_multiview}")
-    print(f"Views format is set to: {bpy.context.scene.render.views_format}")
-    camera.data.lens_unit = "FOV"
-    camera.data.angle = 1.0471975803375244  # 60 degrees in radians
-    camera.data.clip_start = 0.0001
-    camera.data.clip_end = 1000
-    print(f"Camera attributes are set to hardcoded values")
+    # (left, right, center)
+    cammask = (False, False, True)  # Defaults to center only, also to make PyLance happy
+
+    if mode == 'center': # Know this is redundant, but it is to emphasize all possible choices
+        cammask = (False, False, True)  # Defaults to center only, also to make PyLance happy
+    if mode == "leftright":
+        cammask = (True, True, False)
+
+    (
+        bpy.context.scene.render.views["left"].use,
+        bpy.context.scene.render.views["right"].use,
+        bpy.context.scene.render.views["center"].use,
+    ) = cammask
+
+    cameras: Tuple[bpy.types.Object] = tuple(bpy.data.collections[cng.CAM_CLTN].all_objects)
+    for use, cam in zip(cammask, cameras):
+        if use:
+            print(f"{cam.name} will be used for rendering")
+            cam.data.type = "PERSP"
+            cam.data.lens_unit = "FOV"
+            cam.data.angle = 1.0471975803375244  # 60 degrees in radians
+            cam.data.clip_start = 0.0001
+            cam.data.clip_end = 1000
+            print(f"{cam.name}'s attributes are set to hardcoded values")
 
 
 @section("Clear data")
@@ -302,8 +316,21 @@ def handle_bbox(bbox: str) -> Tuple[str]:
     if bbox == "all":
         bbox_ = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, cng.BBOX_MODE_STD)
     else:
-        bbox_ = (args.bbox,)
+        bbox_ = (bbox,)
     return bbox_
+
+@section('Standard bounding box options')
+def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
+    if view_mode == 'center':
+        print(f'{cng.CAMERA_OBJ_CENTER} will be used to calculate standard bounding boxes')
+        return bpy.data.objects[cng.CAMERA_OBJ_CENTER]
+    if view_mode == 'leftright':    
+        if camchoice == 'left':
+            print(f'{cng.CAMERA_OBJ_LEFT} will be used to calculate standard bounding boxes')
+            return bpy.data.objects[cng.CAMERA_OBJ_LEFT]
+        if camchoice == 'right':
+            print(f'{cng.CAMERA_OBJ_RIGHT} will be used to calculate standard bounding boxes')
+            return bpy.data.objects[cng.CAMERA_OBJ_RIGHT]
 
 
 @section("Show reference")
@@ -381,8 +408,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--view-mode",
-        help=f"Set render mode between stereo or single, default: {cng.ARGS_DEFAULT_VIEW_MODE}",
-        choices=("stereo", "single"),
+        help=f"Set render mode between leftright (stereo) or center (single), default: {cng.ARGS_DEFAULT_VIEW_MODE}",
+        choices=("leftright", "center"),
         default=cng.ARGS_DEFAULT_VIEW_MODE,
         const=cng.ARGS_DEFAULT_VIEW_MODE,
         nargs="?",
@@ -400,6 +427,15 @@ if __name__ == "__main__":
         help=f"Specify dir for generated data, default: {cng.GENERATED_DATA_DIR}",
         default=cng.GENERATED_DATA_DIR,
     )
+    
+    parser.add_argument(
+        "--stdbboxcam",
+        help=f"Specify which camera std bbox should be generated to, default: {cng.ARGS_DEFAULT_STDBBOX_CAM}",
+        choices=("left", "right"),
+        default=cng.ARGS_DEFAULT_STDBBOX_CAM,
+        const=cng.ARGS_DEFAULT_STDBBOX_CAM,
+        nargs="?",
+    )
 
     args = parser.parse_args()
 
@@ -410,4 +446,9 @@ if __name__ == "__main__":
     show_reference(args.reference)
     handle_clear(args.clear, args.clear_exit)
 
-    main(args.n_imgs, handle_bbox(args.bbox), args.wait)
+    main(
+        n=args.n_imgs, 
+        bbox_modes=handle_bbox(args.bbox), 
+        wait=args.wait, 
+        stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode)
+    )
