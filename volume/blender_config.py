@@ -49,15 +49,36 @@ RENDER_RES_X = 416 # Render res is atm or documentation only, the code wont use 
 RENDER_RES_Y = 416
 
 """CLI"""
+# options suffixed with _SHORT are the shortened version of the big one
+# none of the OPT_* stuff is used in code as of 09/01/2021
+OPT_ENGINE = "--engine" # Choose engine, (BLENDER_EEVEE, CYCLES)
+OPT_ENGINE_SHORT = "-e" 
+OPT_CLEAR = "--clear" # O
+OPT_CLEAR_EXIT = "--clear-exit"
+OPT_DEVICE = "--device"
+OPT_DEVICE_SHORT = "--d"
+OPT_SAMPLES = "--samples"
+OPT_SAMPLES_SHORT = "-s"
+OPT_BBOX = "--bbox"
+OPT_BBOX_SHORT = "-b"
+OPT_REFERENCE = "--reference"
+OPT_REFERENCE_SHORT = "-r"
+OPT_VIEW_MODE = "--view-mode"
+OPT_WAIT = "--wait"
+OPT_WAIT_SHORT = "-w"
+OPT_DIR = "--dir"
+OPT_STDBBOXCAM = "--stdbboxcam"
+
+
 ARGS_DEFAULT_ENGINE = "CYCLES"  # [BLENDER_EEVEE, CYCLES]
 ARGS_DEFAULT_DEVICE = "CUDA"
 ARGS_DEFAULT_RENDER_SAMPLES = 96
 ARGS_DEFAULT_BBOX_MODE = "all"  # [BBOX_MODE_CPS, BBOX_MODE_XYZ, 'all']
 ARGS_DEFAULT_VIEW_MODE = "leftright"  # [leftright, center]
-ARGS_DEFAULT_STDBBOX_CAM = "left" 
+ARGS_DEFAULT_STDBBOX_CAM = "left"
 
 """INFO"""
-HIGHLIGHT_MIN_WIDTH = 70
+HIGHLIGHT_MIN_WIDTH = 72
 BOXED_SYMBOL_TOP = "="  # Only single char
 BOXED_SYMBOL_BOTTOM = "="  # Only single char
 BOXED_STR_SIDE = "||"  # Can be string

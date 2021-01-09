@@ -321,15 +321,17 @@ def handle_bbox(bbox: str) -> Tuple[str]:
 
 @section('Standard bounding box options')
 def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
+    print('Note: camera for bounding box will be set regardless of use')
+    info = '{} will be used to calculate standard bounding'
     if view_mode == 'center':
-        print(f'{cng.CAMERA_OBJ_CENTER} will be used to calculate standard bounding boxes')
+        print(info.format(cng.CAMERA_OBJ_CENTER))
         return bpy.data.objects[cng.CAMERA_OBJ_CENTER]
     if view_mode == 'leftright':    
         if camchoice == 'left':
-            print(f'{cng.CAMERA_OBJ_LEFT} will be used to calculate standard bounding boxes')
+            print(info.format(cng.CAMERA_OBJ_LEFT))
             return bpy.data.objects[cng.CAMERA_OBJ_LEFT]
         if camchoice == 'right':
-            print(f'{cng.CAMERA_OBJ_RIGHT} will be used to calculate standard bounding boxes')
+            print(info.format(cng.CAMERA_OBJ_RIGHT))
             return bpy.data.objects[cng.CAMERA_OBJ_RIGHT]
 
 
