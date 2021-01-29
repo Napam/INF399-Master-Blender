@@ -12,7 +12,7 @@ from numpy import pi
 # names
 
 """generate.py"""
-SRC_CLTN = "Fishes"  # Collection of original objects
+SRC_CLTN = "Originals"  # Collection of original objects
 TRGT_CLTN = "Copies"  # Collection of copies (to be rendered)
 REF_CLTN = "Reference"  # Collection of reference item, used to sanity check renders
 CAM_CLTN = "Cameras"  # Collection of camera objects
@@ -68,7 +68,6 @@ OPT_WAIT = "--wait"
 OPT_WAIT_SHORT = "-w"
 OPT_DIR = "--dir"
 OPT_STDBBOXCAM = "--stdbboxcam"
-
 
 ARGS_DEFAULT_ENGINE = "CYCLES"  # [BLENDER_EEVEE, CYCLES]
 ARGS_DEFAULT_DEVICE = "CUDA"

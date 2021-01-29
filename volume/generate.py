@@ -149,7 +149,7 @@ def camera_view_bounds_2d(
     depsgraph = bpy.context.evaluated_depsgraph_get()
     mesh_eval = me_ob.copy().evaluated_get(depsgraph)  # Must use copy or segfault on Linux build
     me = mesh_eval.to_mesh()  # Crashes on Linux build, see above comment for fix
-    me.transform(me_ob.matrix_world)
+    me.transform(me_ob.matrix_world)    
     me.transform(mat)
 
     camera: bpy.types.Camera = cam_ob.data
@@ -203,6 +203,7 @@ def camera_view_bounds_2d(
     # if round((max_x - min_x) * dim_x) == 0 or round((max_y - min_y) * dim_y) == 0:
     #     return (0, 0, 0, 0)
 
+    # Relative values
     return (
         round(min_x, 4),  # X
         round(1 - max_y, 4),  # Y
@@ -210,6 +211,7 @@ def camera_view_bounds_2d(
         round((max_y - min_y), 4),  # Height
     )
 
+    # Absolute values
     return (
         int(round(min_x * dim_x)),  # X
         int(round(dim_y - max_y * dim_y)),  # Y
@@ -389,7 +391,7 @@ class DatadumpVisitor(Scenevisitor):
         Gets labels
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
-        etc. Blender 2.83 does this automatically at least
+        etc. Blender 2.83 does this automatically at least when copying
 
         Returns
         -------
@@ -399,7 +401,7 @@ class DatadumpVisitor(Scenevisitor):
         camera = self.stdbboxcam
         boxes_list = []
         for obj in objects:
-            objclass = obj.name.split(".")[0]
+            objclass = obj.name.split(".")[0] # eg mackerel.002 -> mackerel
             box = camera_view_bounds_2d(scene=bpy.context.scene, cam_ob=camera, me_ob=obj)
             boxes_list.append((scene.name2num[objclass], np.array(box)))
 
@@ -429,7 +431,7 @@ class Scenemaker:
         Parameters
         ----------
         src_collection: name of collection containing source objects to be copied,
-                           defaults to "Fishes"
+                           defaults to "Originals"
 
         target_collection: name of collection to contain copied objects
         """
@@ -448,7 +450,7 @@ class Scenemaker:
 
     def generate_scene(self, n: int = 3, spawnbox: Optional[str] = None) -> List[bpy.types.Object]:
         """
-        Copy fishes from src_collection and place them within "spawnbox" (a Cube)
+        Copy fishes from src_collection and place them within "spawnbox" (a box)
 
         Parameters
         -----------

@@ -1,5 +1,7 @@
 """
 Main python file to control Blender application
+
+Written by Naphat Amundsen
 """
 
 import os
@@ -248,8 +250,18 @@ def set_attrs_engine(engine: str, samples: int) -> None:
 
 @section("View mode")
 def set_attrs_view(mode: str) -> None:
-    bpy.context.scene.render.use_multiview = True
-    bpy.context.scene.render.views_format = "MULTIVIEW"
+    '''
+    modes:
+        'center'
+        'leftright'
+    '''
+    print(f'View mode: {mode}')
+    if mode == 'center':
+        bpy.context.scene.render.use_multiview = False
+    if mode == 'leftright':
+        bpy.context.scene.render.use_multiview = True
+
+    bpy.context.scene.render.views_format = "MULTIVIEW" #no effect if bpy.context.scene.render.use_multiview = False
     bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
     bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
     bpy.context.scene.render.views["center"].file_suffix = cng.FILE_SUFFIX_CENTER
