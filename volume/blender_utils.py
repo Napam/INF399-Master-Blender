@@ -91,10 +91,12 @@ def select_collection(collection: bpy.types.Collection, deselect_first: bool = T
 
     return list(collection.all_objects)
 
+
 def deselect_all():
     '''Deselects everything'''
     # Deselect everything first
     bpy.ops.object.select_all(action="DESELECT")
+
 
 def rm_collection(
     collection: bpy.types.Collection,

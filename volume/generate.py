@@ -21,6 +21,7 @@ import sqlite3 as db
 import blender_config as cng
 import blender_setup as setup
 import blender_utils as utils
+from debug import debug, debugs, debugt
 
 reload(setup)
 reload(utils)
@@ -65,12 +66,28 @@ def get_euler_rotations(n: int) -> np.ndarray:
     Returns:
     --------
     rotations: np.ndarray of size (n,3), each row representing a euler rotation for
-               one object.
+               one object. Angles are in radians.
     """
     mus = cng.ROT_MUS
     stds = cng.ROT_STDS
     rotations = np.random.normal(loc=mus, scale=stds, size=(n, 3))
     return rotations
+
+
+def change_to_spawnbox_coords(loc: np.ndarray) -> np.ndarray:
+    """Helper function to change locations to spawnbox locations, will normalize wil
+    respect to spawnbox dimensions. Assumes that spawnbox does not have no rotation, that
+    is the spawnbox sides is parallell to axes. 
+
+    Parameters
+    ----------
+    loc : Sequence[float]
+        Location vector
+    """
+    spawnbox: bpy.types.Object = bpy.data.objects[cng.SPAWNBOX_OBJ]
+    new_origo = np.array(spawnbox.location) # location is center point
+    new_loc = loc - np.array(new_origo)
+    return new_loc / np.array(spawnbox.dimensions)
 
 
 def create_datadir(dirname: Optional[str] = None) -> None:
@@ -112,7 +129,7 @@ def get_max_imgid(cursor: db.Cursor, table: str) -> int:
     maxid if there are any entries in table, else return -1
     """
     res = cursor.execute(f"SELECT MAX({cng.BBOX_DB_IMGRNR}) FROM {table}")
-    maxid = res.fetchall()[0][0]
+    maxid: int = res.fetchall()[0][0]
 
     if maxid is None:
         return -1
@@ -292,6 +309,9 @@ class DatadumpVisitor(Scenevisitor):
             cng.BBOX_MODE_XYZ: lambda s: self._db_store(
                 self.extract_labels_xyz(s), cng.BBOX_DB_TABLE_XYZ
             ),
+            cng.BBOX_MODE_FULL: lambda s: self._db_store(
+                self.extract_labels_full(s), cng.BBOX_DB_TABLE_FULL
+            ),
             cng.BBOX_MODE_STD: lambda s: self._db_store(
                 self.extract_labels_std(s), cng.BBOX_DB_TABLE_STD
             ),
@@ -342,7 +362,7 @@ class DatadumpVisitor(Scenevisitor):
     @staticmethod
     def extract_labels_cps(scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
         """
-        Gets labels
+        Gets labels as cornerpoints (8 points in 3D space)
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
         etc. Blender 2.83 does this automatically at least
@@ -367,7 +387,7 @@ class DatadumpVisitor(Scenevisitor):
     @staticmethod
     def extract_labels_xyz(scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
         """
-        Gets labels
+        Gets labels as width, length and height of box
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
         etc. Blender 2.83 does this automatically at least
@@ -386,9 +406,41 @@ class DatadumpVisitor(Scenevisitor):
 
         return boxes_list
 
+    @staticmethod
+    def extract_labels_full(scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
+        """
+        Gets labels as bounding box dimensions, bounding box euler rotation, 3d location
+
+        Location is in reference of spawnbox, and uses relative coordinates. 
+
+        Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
+        etc. Blender 2.83 does this automatically at least
+
+        Returns
+        -------
+        boxes_list = [(class, box), (class, box), ...]
+
+                                                                     3d vectors
+        where box: np.ndarray, box.shape: (9,), consists of [location, bboxdim, rotation]
+
+        location is relative to spawnbox, that is origo is at spawnbox center,
+        and the values are normalized with respect to spawnbox dimensions. 
+        """
+        objects = utils.select_collection(scene.target_collection)
+        boxes_list = []
+
+        for obj in objects:
+            objclass = obj.name.split(".")[0]
+            dim = obj.dimensions
+            rot = obj.rotation_euler # Radians
+            loc = change_to_spawnbox_coords(np.array(obj.location))
+            boxes_list.append((scene.name2num[objclass], np.concatenate((loc, dim, rot))))
+        
+        return boxes_list
+
     def extract_labels_std(self, scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
         """
-        Gets labels
+        Gets labels as regular 2D bounding boxes on the image
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
         etc. Blender 2.83 does this automatically at least when copying
@@ -461,6 +513,8 @@ class Scenemaker:
         """
         locs = get_spawn_locs(n, spawnbox)
         rots = get_euler_rotations(n)
+
+        self.src_objects: Tuple[bpy.types.Object]
         src_samples = random.choices(self.src_objects, k=n)
 
         for obj, loc, rot in zip(src_samples, locs, rots):
@@ -470,7 +524,7 @@ class Scenemaker:
             ### Set object attributes here ###
             ##################################
             new_obj.location = loc
-            new_obj.rotation_euler = rot
+            new_obj.rotation_euler = rot # Treated as radians
             new_obj.scale *= np.random.normal(loc=1, scale=0.1)
             new_obj.show_bounds = True
             new_obj.show_name = False

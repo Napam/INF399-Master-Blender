@@ -22,7 +22,7 @@ CAMERA_OBJ_LEFT = "camera_L" # Name of left camera object, should be same name i
 CAMERA_OBJ_RIGHT = "camera_R" # Name of right camera object, should be same name in Blender file
 ROT_MUS = [pi / 2, 0, pi]
 ROT_STDS = [0.5, 1, 1]
-DEFAULT_BBOX_MODE = "xyz"  # cps xyz
+DEFAULT_BBOX_MODE = "full"  # cps xyz
 COMMIT_INTERVAL = 32  # How often to commit to database (16 means commit at every 16th sample)
 
 """Filesystem, data and database"""
@@ -38,10 +38,12 @@ BBOX_DB_IMGRNR = "imgnr"  # Column name for image id
 BBOX_DB_CLASS = "class_"  # Column name for classes
 BBOX_MODE_CPS = "cps" # Cornerponts
 BBOX_MODE_XYZ = "xyz" # Lengths in x, y, z dimension
+BBOX_MODE_FULL = "full" # Lengths in x, y, z dimension
 BBOX_MODE_STD = "std" # Standard 2D bbox for object detection 
 BBOX_DB_TABLE_XYZ = "bboxes_xyz"  # Length width height
 BBOX_DB_TABLE_CPS = "bboxes_cps"  # Corner points
 BBOX_DB_TABLE_STD = "bboxes_std"  # Standard bounding boxes
+BBOX_DB_TABLE_FULL = "bboxes_full"  # Standard bounding boxes
 FILE_SUFFIX_CENTER = "_C" 
 FILE_SUFFIX_LEFT = "_L" # Rendering only from one direction will not generate file suffixes
 FILE_SUFFIX_RIGHT = "_R"

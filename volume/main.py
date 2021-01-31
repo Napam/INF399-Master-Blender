@@ -31,7 +31,11 @@ import functools
 
 
 def print_boxed(*args: Tuple[str], end="\n") -> None:
-    """I'm a bit extra sometimes u know?"""
+    """
+    Encloses strings in a big box for extra visibility
+
+    I'm a bit extra sometimes u know?
+    """
 
     width = max(max(map(len, args)) + 2 * len(cng.BOXED_STR_SIDE) + 2, cng.HIGHLIGHT_MIN_WIDTH)
 
@@ -119,7 +123,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Ob
     n : int
         Number of images to render
     bbox_modes : Sequence[str]
-        Sequence of modes to save bounding boxes, given as strings. Avilable: xyz cps
+        Sequence of modes to save bounding boxes, given as strings. Available: xyz cps
     """
     check_generate_datadir()
 
@@ -165,7 +169,6 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Ob
 
     commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
-
         scene.clear()
         scene.generate_scene(np.random.randint(1, 6))
         imgfilepath = imgpath + str(i)
@@ -184,7 +187,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Ob
         datavisitor.set_n(i)
         datavisitor.visit(scene)
 
-        # Commit at every 32nd render
+        # Only commit in intervals
         commit_flag = not i % cng.COMMIT_INTERVAL
 
         if commit_flag:
@@ -206,9 +209,11 @@ def set_attrs_device(target_device: str) -> None:
     print("Getting hardware devices:")
     # YOU NEED TO DO THIS SO THAT BLENDER LOADS AVAILABLE DEVICES!!!
     bpy.context.preferences.addons["cycles"].preferences.get_devices()
+    # Also note that EEVEE only runs on GPU, so there is need to explicitly activate GPU for EEVEE
     devices: Iterable = bpy.context.preferences.addons["cycles"].preferences.devices
     for d in devices:
         print("\t", d.id)
+
     try:
         bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
         for device in devices:
@@ -250,18 +255,20 @@ def set_attrs_engine(engine: str, samples: int) -> None:
 
 @section("View mode")
 def set_attrs_view(mode: str) -> None:
-    '''
+    """
     modes:
         'center'
         'leftright'
-    '''
-    print(f'View mode: {mode}')
-    if mode == 'center':
+    """
+    print(f"View mode: {mode}")
+    if mode == "center":
         bpy.context.scene.render.use_multiview = False
-    if mode == 'leftright':
+    if mode == "leftright":
         bpy.context.scene.render.use_multiview = True
 
-    bpy.context.scene.render.views_format = "MULTIVIEW" #no effect if bpy.context.scene.render.use_multiview = False
+    bpy.context.scene.render.views_format = (
+        "MULTIVIEW"  # no effect if bpy.context.scene.render.use_multiview = False
+    )
     bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
     bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
     bpy.context.scene.render.views["center"].file_suffix = cng.FILE_SUFFIX_CENTER
@@ -269,7 +276,7 @@ def set_attrs_view(mode: str) -> None:
     # (left, right, center)
     cammask = (False, False, True)  # Defaults to center only, also to make PyLance happy
 
-    if mode == 'center': # Know this is redundant, but it is to emphasize all possible choices
+    if mode == "center":  # Know this is redundant, but it is to emphasize all possible choices
         cammask = (False, False, True)  # Defaults to center only, also to make PyLance happy
     if mode == "leftright":
         cammask = (True, True, False)
@@ -326,23 +333,24 @@ def handle_clear(clear: bool, clear_exit: bool) -> None:
 
 def handle_bbox(bbox: str) -> Tuple[str]:
     if bbox == "all":
-        bbox_ = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, cng.BBOX_MODE_STD)
+        bbox_ = (cng.BBOX_MODE_CPS, cng.BBOX_MODE_XYZ, cng.BBOX_MODE_FULL, cng.BBOX_MODE_STD)
     else:
         bbox_ = (bbox,)
     return bbox_
 
-@section('Standard bounding box options')
+
+@section("Standard bounding box options")
 def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
-    print('Note: camera for bounding box will be set regardless of use')
-    info = '{} will be used to calculate standard bounding'
-    if view_mode == 'center':
+    print("Note: camera for bounding box will be set regardless of use")
+    info = "{} will be used to calculate standard bounding"
+    if view_mode == "center":
         print(info.format(cng.CAMERA_OBJ_CENTER))
         return bpy.data.objects[cng.CAMERA_OBJ_CENTER]
-    if view_mode == 'leftright':    
-        if camchoice == 'left':
+    if view_mode == "leftright":
+        if camchoice == "left":
             print(info.format(cng.CAMERA_OBJ_LEFT))
             return bpy.data.objects[cng.CAMERA_OBJ_LEFT]
-        if camchoice == 'right':
+        if camchoice == "right":
             print(info.format(cng.CAMERA_OBJ_RIGHT))
             return bpy.data.objects[cng.CAMERA_OBJ_RIGHT]
 
@@ -441,7 +449,7 @@ if __name__ == "__main__":
         help=f"Specify dir for generated data, default: {cng.GENERATED_DATA_DIR}",
         default=cng.GENERATED_DATA_DIR,
     )
-    
+
     parser.add_argument(
         "--stdbboxcam",
         help=f"Specify which camera std bbox should be generated to, default: {cng.ARGS_DEFAULT_STDBBOX_CAM}",
@@ -461,8 +469,8 @@ if __name__ == "__main__":
     handle_clear(args.clear, args.clear_exit)
 
     main(
-        n=args.n_imgs, 
-        bbox_modes=handle_bbox(args.bbox), 
-        wait=args.wait, 
-        stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode)
+        n=args.n_imgs,
+        bbox_modes=handle_bbox(args.bbox),
+        wait=args.wait,
+        stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
     )
