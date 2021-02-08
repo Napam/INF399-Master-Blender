@@ -170,7 +170,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Ob
     commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
         scene.clear()
-        scene.generate_scene(np.random.randint(1, 6))
+        scene.generate_scene(np.random.randint(1, 8))
         imgfilepath = imgpath + str(i)
         print(f"Starting to render imgnr {i}")
         utils.render_and_save(imgfilepath)

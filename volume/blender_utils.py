@@ -13,7 +13,7 @@ Written by Naphat Amundsen
 """
 
 import bpy
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 import pathlib
 import blender_config as cng
 import argparse
@@ -73,18 +73,25 @@ def unused_remover(block) -> None:
             block.remove(obj)
 
 
-def select_collection(collection: bpy.types.Collection, deselect_first: bool = True) -> list:
+def select_collection(
+    collection: Union[bpy.types.Collection, str], deselect_first: bool = True
+) -> list:
     """
     Select all objects in collection and returns them in a list
 
     Parameters
     ----------
-    collection: collection object
+    collection: Union[bpy.types.Collection, str]
+        if string, then get collection by bpy.data.collections[collection]
+    form string
 
     deselect_first: whether to deselect everything else first or not
     """
+    if isinstance(collection, str):
+        collection: bpy.types.Collection = bpy.data.collections[collection]
+
     if deselect_first:
-        bpy.ops.object.select_all(action="DESELECT")
+        deselect_all()
 
     for obj in collection.all_objects:
         obj.select_set(True)
@@ -93,18 +100,33 @@ def select_collection(collection: bpy.types.Collection, deselect_first: bool = T
 
 
 def deselect_all():
-    '''Deselects everything'''
+    """Deselects everything"""
     # Deselect everything first
     bpy.ops.object.select_all(action="DESELECT")
 
 
 def rm_collection(
-    collection: bpy.types.Collection,
+    collection: Union[bpy.types.Collection, str],
     materials: bool = True,
     meshes: bool = True,
     lights: bool = True,
 ):
-    """Remove objects in given collection and unused materials, meshes and lights"""
+    """Remove objects in given collection and unused materials, meshes and lights
+
+    Parameters
+    ----------
+    collection : Union[bpy.types.Collection, str]
+        if string, then get collection by bpy.data.collections[collection]
+    materials : bool, optional
+        remove materials bound to objects, by default True
+    meshes : bool, optional
+        remove meshes bound to objects, by default True
+    lights : bool, optional
+        remove lights bound to objeects, by default True
+    """  
+    if isinstance(collection, str):
+        collection: bpy.types.Collection = bpy.data.collections[collection]
+
     [bpy.data.objects.remove(c, do_unlink=True) for c in collection.objects]
     if materials:
         unused_remover(bpy.data.materials)

@@ -77,7 +77,7 @@ def get_euler_rotations(n: int) -> np.ndarray:
 def change_to_spawnbox_coords(loc: np.ndarray) -> np.ndarray:
     """Helper function to change locations to spawnbox locations, will normalize wil
     respect to spawnbox dimensions. Assumes that spawnbox does not have no rotation, that
-    is the spawnbox sides is parallell to axes. 
+    is the spawnbox sides is parallell to axes.
 
     Parameters
     ----------
@@ -85,7 +85,7 @@ def change_to_spawnbox_coords(loc: np.ndarray) -> np.ndarray:
         Location vector
     """
     spawnbox: bpy.types.Object = bpy.data.objects[cng.SPAWNBOX_OBJ]
-    new_origo = np.array(spawnbox.location) # location is center point
+    new_origo = np.array(spawnbox.location)  # location is center point
     new_loc = loc - np.array(new_origo)
     return new_loc / np.array(spawnbox.dimensions)
 
@@ -166,7 +166,7 @@ def camera_view_bounds_2d(
     depsgraph = bpy.context.evaluated_depsgraph_get()
     mesh_eval = me_ob.copy().evaluated_get(depsgraph)  # Must use copy or segfault on Linux build
     me = mesh_eval.to_mesh()  # Crashes on Linux build, see above comment for fix
-    me.transform(me_ob.matrix_world)    
+    me.transform(me_ob.matrix_world)
     me.transform(mat)
 
     camera: bpy.types.Camera = cam_ob.data
@@ -322,7 +322,7 @@ class DatadumpVisitor(Scenevisitor):
 
     def set_n(self, n: int) -> None:
         """
-        Set n
+        Set n, for image number, so if n = 12, then it will save img12...
         """
         self.n_is_set = True
         self.n = n
@@ -411,7 +411,7 @@ class DatadumpVisitor(Scenevisitor):
         """
         Gets labels as bounding box dimensions, bounding box euler rotation, 3d location
 
-        Location is in reference of spawnbox, and uses relative coordinates. 
+        Location is in reference of spawnbox, and uses relative coordinates.
 
         Assumes that the copies of the originals are named e.g. mackerel.001, whiting.001
         etc. Blender 2.83 does this automatically at least
@@ -424,7 +424,7 @@ class DatadumpVisitor(Scenevisitor):
         where box: np.ndarray, box.shape: (9,), consists of [location, bboxdim, rotation]
 
         location is relative to spawnbox, that is origo is at spawnbox center,
-        and the values are normalized with respect to spawnbox dimensions. 
+        and the values are normalized with respect to spawnbox dimensions.
         """
         objects = utils.select_collection(scene.target_collection)
         boxes_list = []
@@ -432,10 +432,10 @@ class DatadumpVisitor(Scenevisitor):
         for obj in objects:
             objclass = obj.name.split(".")[0]
             dim = obj.dimensions
-            rot = obj.rotation_euler # Radians
+            rot = obj.rotation_euler  # Radians
             loc = change_to_spawnbox_coords(np.array(obj.location))
             boxes_list.append((scene.name2num[objclass], np.concatenate((loc, dim, rot))))
-        
+
         return boxes_list
 
     def extract_labels_std(self, scene: "Scenemaker") -> List[Tuple[int, np.ndarray]]:
@@ -453,7 +453,7 @@ class DatadumpVisitor(Scenevisitor):
         camera = self.stdbboxcam
         boxes_list = []
         for obj in objects:
-            objclass = obj.name.split(".")[0] # eg mackerel.002 -> mackerel
+            objclass = obj.name.split(".")[0]  # eg mackerel.002 -> mackerel
             box = camera_view_bounds_2d(scene=bpy.context.scene, cam_ob=camera, me_ob=obj)
             boxes_list.append((scene.name2num[objclass], np.array(box)))
 
@@ -524,7 +524,7 @@ class Scenemaker:
             ### Set object attributes here ###
             ##################################
             new_obj.location = loc
-            new_obj.rotation_euler = rot # Treated as radians
+            new_obj.rotation_euler = rot  # Treated as radians
             new_obj.scale *= np.random.normal(loc=1, scale=0.1)
             new_obj.show_bounds = True
             new_obj.show_name = False
@@ -543,12 +543,19 @@ class Scenemaker:
 
     def create_classdict(self) -> Dict[str, int]:
         """
-        Creates dictionaries between numerical and string representation of the classes
+        Old behavior: Creates dictionaries between numerical and string representation of the classes
+
+        New begaviot: Returns CLASS_DICT from config file, stricter enforcement of classes at the cost
+                      of more manual labor
+
 
         Returns
         -------
         string to num dictionary for object classes
         """
-        self.name2num = {obj.name: i for i, obj in enumerate(self.src_objects)}
-        self.num2name = {i: obj.name for i, obj in enumerate(self.src_objects)}
+        # self.name2num = {obj.name: i for i, obj in enumerate(self.src_objects)}
+        # self.num2name = {i: obj.name for i, obj in enumerate(self.src_objects)}
+        
+        self.name2num = cng.CLASS_DICT
+        self.num2name = {v: k for k, v in cng.CLASS_DICT.items()}
         return self.name2num
