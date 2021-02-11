@@ -1,3 +1,8 @@
+'''
+Code used to setup scenes, and extracting labels
+
+Written by Naphat Amundsen
+'''
 import abc
 import os
 import pathlib

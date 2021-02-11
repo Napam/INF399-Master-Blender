@@ -1,5 +1,5 @@
 """
-Used to specifically make LaTeX tables 
+Used to make LaTeX tables by extracting information from Blender world
 """
 import sys
 import bpy
