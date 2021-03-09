@@ -1,2 +1,2 @@
-volume/generated_data
-volume/data
+volume/*.blend
+volume/*data
