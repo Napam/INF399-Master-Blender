@@ -47,6 +47,7 @@ ARG gid=1000
 RUN groupadd -g $gid stud && \
     useradd --create-home --shell /bin/bash -u $uid -g $gid $user && \
     usermod -a -G sudo $user && \
-    passwed -d $user
+    usermod -a -G root $user && \
+    passwd -d $user
 
 CMD ["/bin/bash"] 
