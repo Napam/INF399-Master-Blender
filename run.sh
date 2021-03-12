@@ -2,7 +2,6 @@
 DOCKER_FLAGS=""
 ARGS=""
 USER=$(whoami)
-HOSTNAME="BLENDER-CONTAINER"
 
 error() {
         echo "u do sumting wong"
@@ -21,7 +20,7 @@ done
 # $@ is an array or something, start at $OPTIND and rest
 ARGS+=${@:$OPTIND}
 
-docker run ${DOCKER_FLAGS} -it --hostname ${HOSTNAME} \
+docker run ${DOCKER_FLAGS} -it \
         --user ${USER} \
         -v "$(pwd)/volume":/app \
         --rm --name blender-nam012-cntr nam012-blender ${ARGS}

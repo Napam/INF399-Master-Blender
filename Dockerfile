@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
 ENV WORKDIR /app
 ENV BLENDER_DIR /usr/local
 ENV BLENDER_MAJOR 2.83
-ENV BLENDER_VERSION 2.83.9
+ENV BLENDER_VERSION 2.83.13
 ENV BLENDER_URL https://download.blender.org/release/Blender${BLENDER_MAJOR}/blender-${BLENDER_VERSION}-linux64.tar.xz
 
 WORKDIR ${WORKDIR}
@@ -38,6 +38,11 @@ RUN python3.7m -m ensurepip && python3.7m -m pip --no-cache-dir install --upgrad
 # Remove build dependencies
 RUN apt-get -y --purge autoremove \
     curl
+
+# Common bash rc
+COPY bashrc /etc/bash.bashrc
+# Prompt stuff
+RUN echo "export PS1='\e[33m\u@\e[1;31mBlender\e[0m \w \e[33m>\e[0m '" >> /etc/skel/.bashrc
 
 # Configure user
 ARG user=kanyewest
