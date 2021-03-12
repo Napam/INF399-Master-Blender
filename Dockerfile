@@ -41,8 +41,6 @@ RUN apt-get -y --purge autoremove \
 
 # Common bash rc
 COPY bashrc /etc/bash.bashrc
-# Prompt stuff
-RUN echo "export PS1='\e[33m\u@\e[1;31mBlender\e[0m \w \e[33m>\e[0m '" >> /etc/skel/.bashrc
 
 # Configure user
 ARG user=kanyewest
@@ -50,7 +48,7 @@ ARG uid=1000
 ARG gid=1000
 
 RUN groupadd -g $gid stud && \
-    useradd --create-home --shell /bin/bash -u $uid -g $gid $user && \
+    useradd --shell /bin/bash -u $uid -g $gid $user && \
     usermod -a -G sudo $user && \
     usermod -a -G root $user && \
     passwd -d $user
