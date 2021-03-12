@@ -39,9 +39,6 @@ RUN python3.7m -m ensurepip && python3.7m -m pip --no-cache-dir install --upgrad
 RUN apt-get -y --purge autoremove \
     curl
 
-# Common bash rc
-COPY bashrc /etc/bash.bashrc
-
 # Configure user
 ARG user=kanyewest
 ARG uid=1000
@@ -52,5 +49,10 @@ RUN groupadd -g $gid stud && \
     usermod -a -G sudo $user && \
     usermod -a -G root $user && \
     passwd -d $user
+
+# Common bash rc
+COPY bashrc /etc/bash.bashrc 
+# Assert everyone can use bashrc, and remove root home dir so it also uses the bashrc
+RUN chmod a+rwx /etc/bash.bashrc && rm -rf /root/
 
 CMD ["/bin/bash"] 
