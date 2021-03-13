@@ -23,12 +23,10 @@ dirpath = pathlib.Path(dir_)
 
 import sqlite3 as db
 
-import blender_config as cng
-import blender_setup as setup
-import blender_utils as utils
+import config as cng
+import utils
 from debug import debug, debugs, debugt
 
-reload(setup)
 reload(utils)
 reload(cng)
 
@@ -523,7 +521,8 @@ class Scenemaker:
         src_samples = random.choices(self.src_objects, k=n)
 
         for obj, loc, rot in zip(src_samples, locs, rots):
-            new_obj = obj.copy()
+            new_obj = obj.copy() # Creates a "placeholder" that links to same attributes as orignal
+            new_obj.data = obj.data.copy() # VERY IMPORTANT, actually replaces important stuff
 
             ##################################
             ### Set object attributes here ###

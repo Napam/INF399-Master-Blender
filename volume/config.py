@@ -55,6 +55,7 @@ BBOX_DB_TABLE_FULL = "bboxes_full"  # Standard bounding boxes
 FILE_SUFFIX_CENTER = "_C"
 FILE_SUFFIX_LEFT = "_L"  # Rendering only from one direction will not generate file suffixes
 FILE_SUFFIX_RIGHT = "_R"
+FILE_SUFFIX_CENTER_TOP = "_C_TOP"
 RENDER_RES_X = 416  # Render res is atm or documentation only, the code wont use it atm
 RENDER_RES_Y = 416
 
@@ -83,7 +84,7 @@ ARGS_DEFAULT_ENGINE = "CYCLES"  # [BLENDER_EEVEE, CYCLES]
 ARGS_DEFAULT_DEVICE = "CUDA"
 ARGS_DEFAULT_RENDER_SAMPLES = 96
 ARGS_DEFAULT_BBOX_MODE = "all"  # [BBOX_MODE_CPS, BBOX_MODE_XYZ, 'all']
-ARGS_DEFAULT_VIEW_MODE = "leftright"  # [leftright, center]
+ARGS_DEFAULT_VIEW_MODE = "leftright"  # [leftright, center, topside]
 ARGS_DEFAULT_STDBBOX_CAM = "left"
 
 """INFO"""

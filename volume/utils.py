@@ -15,7 +15,7 @@ Written by Naphat Amundsen
 import bpy
 from typing import Callable, Optional, Union
 import pathlib
-import blender_config as cng
+import config as cng
 import argparse
 import sys
 

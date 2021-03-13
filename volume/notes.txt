@@ -2,4 +2,7 @@ Order of metadata dictionary (stored in code in generated_data/metadata.txt) is 
 are stored in the blender collection. Not sure if it is part of Blender specification to retrieve
 collection in the same order as displayed, watch out in newer versions. 
 
-Test text
+Updated metadata dictionary creation to follow hardcoded values, for mental health reasons.
+
+You can specify the CTRL-Z history of Blender such that you don't run out of RAM. 
+Edit tab -> Preferences -> System -> Memory & Limits

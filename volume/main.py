@@ -22,8 +22,8 @@ dirpath = pathlib.Path(dir_)
 
 import sqlite3 as db
 
-import blender_config as cng
-import blender_utils as utils
+import config as cng
+import utils
 
 import generate as gen
 from setup_db import DatabaseMaker
@@ -86,36 +86,52 @@ def check_generate_datadir() -> None:
         print(f"Found database file: {db_path}")
 
 
-def assert_image_saved(filepath: str) -> None:
+def assert_image_saved(filepath: str, view_mode: str) -> None:
     """
     Used to assert that image in filepath exists, will automatically handle stereo and single
     case
     """
     errormsgs = "Render results are missing:"
     if bpy.context.scene.render.use_multiview:
-        print("Asserting multiview output")
-        l_path = filepath + f"{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
-        r_path = filepath + f"{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
+        if view_mode == "leftright":
+            print("Asserting multiview output")
+            l_path = filepath + f"{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
+            r_path = filepath + f"{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
 
-        l_exists = os.path.exists(l_path)
-        r_exists = os.path.exists(r_path)
+            l_exists = os.path.exists(l_path)
+            r_exists = os.path.exists(r_path)
 
-        if not l_exists:
-            errormsgs += f"\nLeft image not found, expected to find: \n\t{l_path}"
-        if not r_exists:
-            errormsgs += f"\nRight image not found, expected to find: \n\t{r_path}"
+            if not l_exists:
+                errormsgs += f"\nLeft image not found, expected to find: \n\t{l_path}"
+            if not r_exists:
+                errormsgs += f"\nRight image not found, expected to find: \n\t{r_path}"
 
-        if not (l_exists and r_exists):
-            raise FileNotFoundError(errormsgs)
+            if not (l_exists and r_exists):
+                raise FileNotFoundError(errormsgs)
+        elif view_mode == "topside":
+            center_path = filepath + f"{cng.FILE_SUFFIX_CENTER}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
+            center_top_path = filepath + f"{cng.FILE_SUFFIX_CENTER_TOP}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
+
+            center_exists = os.path.exists(center_path)
+            centertop_exists = os.path.exists(center_top_path)
+
+            if not center_exists:
+                errormsgs += f"\nCenter image not found, expected to find: \n\t{center_path}"
+            if not center_top_path:
+                errormsgs += f"\nTop center image not found, expected to find: \n\t{center_top_path}"
+
+            if not (center_path and center_top_path):
+                raise FileNotFoundError(errormsgs)
     else:
         print("Asserting singleview output")
+        assert view_mode == "center", "Expected view_mode to be center when doing singleview"
         path = filepath + cng.DEFAULT_FILEFORMAT_EXTENSION
         file_exists = os.path.exists(path)
         if not file_exists:
             raise FileNotFoundError(f"Image not found, expected to find: \n\t{path}")
 
 
-def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Object) -> None:
+def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Object, view_mode: str) -> None:
     """Main function for generating data with Blender
 
     Parameters
@@ -123,7 +139,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Ob
     n : int
         Number of images to render
     bbox_modes : Sequence[str]
-        Sequence of modes to save bounding boxes, given as strings. Available: xyz cps
+        Sequence of modes to save bounding boxes, given as strings. Available: xyz cps full std
     """
     check_generate_datadir()
 
@@ -177,7 +193,7 @@ def main(n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Ob
         print(f"Returned from rendering imgnr {i}")
 
         try:
-            assert_image_saved(imgfilepath)
+            assert_image_saved(imgfilepath, view_mode)
         except FileNotFoundError as e:
             print(e)
             print("Breaking render loop")
@@ -259,11 +275,14 @@ def set_attrs_view(mode: str) -> None:
     modes:
         'center'
         'leftright'
+        'topside'
     """
     print(f"View mode: {mode}")
     if mode == "center":
         bpy.context.scene.render.use_multiview = False
     if mode == "leftright":
+        bpy.context.scene.render.use_multiview = True
+    if mode == "topside":
         bpy.context.scene.render.use_multiview = True
 
     bpy.context.scene.render.views_format = (
@@ -272,19 +291,23 @@ def set_attrs_view(mode: str) -> None:
     bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
     bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
     bpy.context.scene.render.views["center"].file_suffix = cng.FILE_SUFFIX_CENTER
+    bpy.context.scene.render.views["center_top"].file_suffix = cng.FILE_SUFFIX_CENTER_TOP
 
-    # (left, right, center)
-    cammask = (False, False, True)  # Defaults to center only, also to make PyLance happy
+    # (left, right, center, center_top)
+    cammask = (False, False, True, False)  # Defaults to center only, also to make PyLance happy
 
     if mode == "center":  # Know this is redundant, but it is to emphasize all possible choices
-        cammask = (False, False, True)  # Defaults to center only, also to make PyLance happy
+        cammask = (False, False, True, False)  # Defaults to center only, also to make PyLance happy
     if mode == "leftright":
-        cammask = (True, True, False)
+        cammask = (True, True, False, False)
+    if mode == "topside":
+        cammask = (False, False, True, True)
 
     (
         bpy.context.scene.render.views["left"].use,
         bpy.context.scene.render.views["right"].use,
         bpy.context.scene.render.views["center"].use,
+        bpy.context.scene.render.views["center_top"].use,
     ) = cammask
 
     cameras: Tuple[bpy.types.Object] = tuple(bpy.data.collections[cng.CAM_CLTN].all_objects)
@@ -344,6 +367,9 @@ def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
     print("Note: camera for bounding box will be set regardless of use")
     info = "{} will be used to calculate standard bounding"
     if view_mode == "center":
+        print(info.format(cng.CAMERA_OBJ_CENTER))
+        return bpy.data.objects[cng.CAMERA_OBJ_CENTER]
+    if view_mode == "topside":
         print(info.format(cng.CAMERA_OBJ_CENTER))
         return bpy.data.objects[cng.CAMERA_OBJ_CENTER]
     if view_mode == "leftright":
@@ -431,7 +457,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--view-mode",
         help=f"Set render mode between leftright (stereo) or center (single), default: {cng.ARGS_DEFAULT_VIEW_MODE}",
-        choices=("leftright", "center"),
+        choices=("leftright", "center", "topside"),
         default=cng.ARGS_DEFAULT_VIEW_MODE,
         const=cng.ARGS_DEFAULT_VIEW_MODE,
         nargs="?",
@@ -473,4 +499,5 @@ if __name__ == "__main__":
         bbox_modes=handle_bbox(args.bbox),
         wait=args.wait,
         stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
+        view_mode=args.view_mode
     )

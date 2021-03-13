@@ -1,13 +1,9 @@
 import pathlib
-import blender_config as cng
+import config as cng
 import sqlite3 as db
 import os
 
-# import bpy
-
 GEN_DIR = pathlib.Path(cng.GENERATED_DATA_DIR)
-# dir_ = os.path.dirname(bpy.data.filepath)
-# dirpath = pathlib.Path(dir_)
 
 
 class DatabaseMaker:
@@ -26,14 +22,14 @@ class DatabaseMaker:
             self.create_bboxes_cps_table,
             self.create_bboxes_xyz_table,
             self.create_bboxes_std_table,
-            self.create_bboxes_full_table
+            self.create_bboxes_full_table,
         )
 
     def __del__(self):
         self.close()
 
     def close(self) -> None:
-        print("Closing database connection")
+        print("Closing database connection for DatabaseMaker")
         self.con.close()
 
     def create_bboxes_cps_table(self) -> None:
@@ -90,7 +86,7 @@ class DatabaseMaker:
             )
         """
         )
-    
+
     def create_bboxes_std_table(self) -> None:
         """
         Creating tables does not require commiting.
@@ -108,7 +104,7 @@ class DatabaseMaker:
             )
         """
         )
-    
+
     def create_bboxes_full_table(self) -> None:
         """
         Creating tables does not require commiting.
