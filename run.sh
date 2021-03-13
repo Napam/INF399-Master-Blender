@@ -22,7 +22,7 @@ ARGS+=${@:$OPTIND}
 
 docker run ${DOCKER_FLAGS} -it \
         --user ${USER} \
-        -v "$(pwd)/volume":/app \
+        -v "$(pwd)/volume":/project \
         --rm --name blender-nam012-cntr nam012-blender ${ARGS}
 
 
