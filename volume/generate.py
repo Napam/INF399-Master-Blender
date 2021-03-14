@@ -167,9 +167,10 @@ def camera_view_bounds_2d(
 
     mat = cam_ob.matrix_world.normalized().inverted()
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    # me_ob = me_ob.copy() # Must use copy or segfault on Linux build
+    # me_ob.evaluated_get(depsgraph) crashed on Linux build in Blender 2.83.9, but works in 2.83.13. 
+    # Solution was to copy me_ob. first. But that resulted in memory leak.
     mesh_eval = me_ob.evaluated_get(depsgraph)  
-    me = mesh_eval.to_mesh()  # Crashes on Linux build, see above comment for fix
+    me = mesh_eval.to_mesh()  
     me.transform(me_ob.matrix_world)
     me.transform(mat)
 
