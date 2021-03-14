@@ -167,7 +167,8 @@ def camera_view_bounds_2d(
 
     mat = cam_ob.matrix_world.normalized().inverted()
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    mesh_eval = me_ob.copy().evaluated_get(depsgraph)  # Must use copy or segfault on Linux build
+    # me_ob = me_ob.copy() # Must use copy or segfault on Linux build
+    mesh_eval = me_ob.evaluated_get(depsgraph)  
     me = mesh_eval.to_mesh()  # Crashes on Linux build, see above comment for fix
     me.transform(me_ob.matrix_world)
     me.transform(mat)
@@ -270,7 +271,7 @@ class DatadumpVisitor(Scenevisitor):
         stdbboxcam: bpy.types.Object, camera object that should be used to calculate standard
                     bounding boxes. The function needs a reference
 
-        bbox_mode: Optional[str], mode to save to SQL. Available: cps, xyz
+        bbox_mode: Optional[str], mode to save to SQL. Available: cps, xyz, full, std
 
         table: Optional str, name of table, if None, then use table specified
                in config file
