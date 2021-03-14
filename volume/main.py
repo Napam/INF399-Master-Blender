@@ -365,7 +365,7 @@ def handle_bbox(bbox: str) -> Tuple[str]:
 @section("Standard bounding box options")
 def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
     print("Note: camera for bounding box will be set regardless of use")
-    info = "{} will be used to calculate standard bounding"
+    info = "{} will be used to calculate standard bounding boxes"
     if view_mode == "center":
         print(info.format(cng.CAMERA_OBJ_CENTER))
         return bpy.data.objects[cng.CAMERA_OBJ_CENTER]
