@@ -18,6 +18,7 @@ REF_CLTN = "Reference"  # Collection of reference item, used to sanity check ren
 CAM_CLTN = "Cameras"  # Collection of camera objects
 SPAWNBOX_OBJ = "spawnbox"  # Spawnbox object, representing the spawn area
 CAMERA_OBJ_CENTER = "camera_C"  # Name of center camera object, should be same name in Blender file
+CAMERA_OBJ_CENTER_TOP = "camera_C_TOP"  # Name of center camera object, should be same name in Blender file
 CAMERA_OBJ_LEFT = "camera_L"  # Name of left camera object, should be same name in Blender file
 CAMERA_OBJ_RIGHT = "camera_R"  # Name of right camera object, should be same name in Blender file
 ROT_MUS = [pi / 2, 0, pi]  # Mean rotation for fishes when generating
@@ -64,7 +65,7 @@ RENDER_RES_Y = 416
 # none of the OPT_* stuff is used in code as of 09/01/2021
 OPT_ENGINE = "--engine"  # Choose engine, (BLENDER_EEVEE, CYCLES)
 OPT_ENGINE_SHORT = "-e"
-OPT_CLEAR = "--clear"  # O
+OPT_CLEAR = "--clear"  
 OPT_CLEAR_EXIT = "--clear-exit"
 OPT_DEVICE = "--device"
 OPT_DEVICE_SHORT = "--d"

@@ -42,30 +42,30 @@ class DatabaseMaker:
             CREATE TABLE {cng.BBOX_DB_TABLE_CPS} (
                 {cng.BBOX_DB_IMGRNR} INTEGER NOT NULL,
                 {cng.BBOX_DB_CLASS} INTEGER NOT NULL,
-                p1_x FLOAT(4) NOT NULL,
-                p1_y FLOAT(4) NOT NULL,
-                p1_z FLOAT(4) NOT NULL,
-                p2_x FLOAT(4) NOT NULL,
-                p2_y FLOAT(4) NOT NULL,
-                p2_z FLOAT(4) NOT NULL,
-                p3_x FLOAT(4) NOT NULL,
-                p3_y FLOAT(4) NOT NULL,
-                p3_z FLOAT(4) NOT NULL,
-                p4_x FLOAT(4) NOT NULL,
-                p4_y FLOAT(4) NOT NULL,
-                p4_z FLOAT(4) NOT NULL,
-                p5_x FLOAT(4) NOT NULL,
-                p5_y FLOAT(4) NOT NULL,
-                p5_z FLOAT(4) NOT NULL,
-                p6_x FLOAT(4) NOT NULL,
-                p6_y FLOAT(4) NOT NULL,
-                p6_z FLOAT(4) NOT NULL,
-                p7_x FLOAT(4) NOT NULL,
-                p7_y FLOAT(4) NOT NULL,
-                p7_z FLOAT(4) NOT NULL,
-                p8_x FLOAT(4) NOT NULL,
-                p8_y FLOAT(4) NOT NULL,
-                p8_z FLOAT(4) NOT NULL
+                p1_x REAL NOT NULL,
+                p1_y REAL NOT NULL,
+                p1_z REAL NOT NULL,
+                p2_x REAL NOT NULL,
+                p2_y REAL NOT NULL,
+                p2_z REAL NOT NULL,
+                p3_x REAL NOT NULL,
+                p3_y REAL NOT NULL,
+                p3_z REAL NOT NULL,
+                p4_x REAL NOT NULL,
+                p4_y REAL NOT NULL,
+                p4_z REAL NOT NULL,
+                p5_x REAL NOT NULL,
+                p5_y REAL NOT NULL,
+                p5_z REAL NOT NULL,
+                p6_x REAL NOT NULL,
+                p6_y REAL NOT NULL,
+                p6_z REAL NOT NULL,
+                p7_x REAL NOT NULL,
+                p7_y REAL NOT NULL,
+                p7_z REAL NOT NULL,
+                p8_x REAL NOT NULL,
+                p8_y REAL NOT NULL,
+                p8_z REAL NOT NULL
             )
         """
         )
@@ -80,9 +80,9 @@ class DatabaseMaker:
             CREATE TABLE {cng.BBOX_DB_TABLE_XYZ} (
                 {cng.BBOX_DB_IMGRNR} INTEGER NOT NULL,
                 {cng.BBOX_DB_CLASS} INTEGER NOT NULL,
-                x FLOAT(4) NOT NULL,
-                y FLOAT(4) NOT NULL,
-                z FLOAT(4) NOT NULL
+                x REAL NOT NULL,
+                y REAL NOT NULL,
+                z REAL NOT NULL
             )
         """
         )
@@ -97,10 +97,10 @@ class DatabaseMaker:
             CREATE TABLE {cng.BBOX_DB_TABLE_STD} (
                 {cng.BBOX_DB_IMGRNR} INTEGER NOT NULL,
                 {cng.BBOX_DB_CLASS} INTEGER NOT NULL,
-                x FLOAT(4) NOT NULL,
-                y FLOAT(4) NOT NULL,
-                w FLOAT(4) NOT NULL,
-                h FLOAT(4) NOT NULL
+                x REAL NOT NULL,
+                y REAL NOT NULL,
+                w REAL NOT NULL,
+                h REAL NOT NULL
             )
         """
         )
@@ -115,15 +115,15 @@ class DatabaseMaker:
             CREATE TABLE {cng.BBOX_DB_TABLE_FULL} (
                 {cng.BBOX_DB_IMGRNR} INTEGER NOT NULL,
                 {cng.BBOX_DB_CLASS} INTEGER NOT NULL,
-                x FLOAT(4) NOT NULL,
-                y FLOAT(4) NOT NULL,
-                z FLOAT(4) NOT NULL,
-                w FLOAT(4) NOT NULL,
-                l FLOAT(4) NOT NULL,
-                h FLOAT(4) NOT NULL,
-                rx FLOAT(4) NOT NULL,
-                ry FLOAT(4) NOT NULL,
-                rz FLOAT(4) NOT NULL
+                x REAL NOT NULL,
+                y REAL NOT NULL,
+                z REAL NOT NULL,
+                w REAL NOT NULL,
+                l REAL NOT NULL,
+                h REAL NOT NULL,
+                rx REAL NOT NULL,
+                ry REAL NOT NULL,
+                rz REAL NOT NULL
             )
         """
         )

@@ -10,7 +10,7 @@ import random
 import sys
 import time
 from importlib import reload
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import bpy
 import numpy as np
@@ -80,7 +80,7 @@ def get_euler_rotations(n: int) -> np.ndarray:
 def change_to_spawnbox_coords(loc: np.ndarray) -> np.ndarray:
     """Helper function to change locations to spawnbox locations, will normalize wil
     respect to spawnbox dimensions. Assumes that spawnbox does not have no rotation, that
-    is the spawnbox sides is parallell to axes.
+    is the spawnbox sides is parallell to axes. Numerical range will now be [-]
 
     Parameters
     ----------
@@ -88,9 +88,20 @@ def change_to_spawnbox_coords(loc: np.ndarray) -> np.ndarray:
         Location vector
     """
     spawnbox: bpy.types.Object = bpy.data.objects[cng.SPAWNBOX_OBJ]
-    new_origo = np.array(spawnbox.location)  # location is center point
-    new_loc = loc - np.array(new_origo)
-    return new_loc / np.array(spawnbox.dimensions)
+    new_origo = np.array(spawnbox.location)  # spawnbox location is center point
+    new_loc = loc - np.array(new_origo) 
+    return new_loc / np.array(spawnbox.dimensions) * 2
+
+
+def normalize_rotations(rots: Union[np.ndarray, float]):
+    '''
+    Normalize rotations, R -> [0, 1]
+    '''
+    # Normalize then modulo
+    # Rotations will become between [0, 1], where 0 is zero radians
+    # and 1 is 2 pi radians
+    # Python modulo: -0.75 % 1 -> 0.25
+    return (rots / (2*np.pi)) % 1
 
 
 def create_datadir(dirname: Optional[str] = None) -> None:
@@ -437,7 +448,7 @@ class DatadumpVisitor(Scenevisitor):
         for obj in objects:
             objclass = obj.name.split(".")[0]
             dim = obj.dimensions
-            rot = obj.rotation_euler  # Radians
+            rot = normalize_rotations(np.array(obj.rotation_euler)) 
             loc = change_to_spawnbox_coords(np.array(obj.location))
             boxes_list.append((scene.name2num[objclass], np.concatenate((loc, dim, rot))))
 
@@ -565,3 +576,15 @@ class Scenemaker:
         self.name2num = cng.CLASS_DICT
         self.num2name = {v: k for k, v in cng.CLASS_DICT.items()}
         return self.name2num
+
+if __name__ == "__main__":
+
+
+    rots = np.array([
+        [14.09213638305664, -0.3313288390636444, 3.390078067779541],
+        [1.887033224105835, 2.353449821472168, 2.9758098125457764],
+        [2.039703369140625, -0.9868448376655579, 3.7885522842407227]
+    ])
+
+    normalize_rotations(rots)
+
