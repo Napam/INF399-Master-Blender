@@ -157,7 +157,6 @@ def render_and_save(filepath: str, fileformat: Optional[str] = None) -> dict:
     # Set values in Blender environment
     bpy.context.scene.render.image_settings.file_format = fileformat
     bpy.context.scene.render.filepath = filepath
-
     return bpy.ops.render.render(write_still=True)
 
 

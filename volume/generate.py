@@ -1,8 +1,8 @@
-'''
+"""
 Code used to setup scenes, and extracting labels
 
 Written by Naphat Amundsen
-'''
+"""
 import abc
 import os
 import pathlib
@@ -14,14 +14,13 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import bpy
 import numpy as np
+import sqlite3 as db
 
 # Add local files ty pythondir in order to import relative files
 dir_ = os.path.dirname(bpy.data.filepath)
 if dir_ not in sys.path:
     sys.path.append(dir_)
 dirpath = pathlib.Path(dir_)
-
-import sqlite3 as db
 
 import config as cng
 import utils
@@ -89,19 +88,19 @@ def change_to_spawnbox_coords(loc: np.ndarray) -> np.ndarray:
     """
     spawnbox: bpy.types.Object = bpy.data.objects[cng.SPAWNBOX_OBJ]
     new_origo = np.array(spawnbox.location)  # spawnbox location is center point
-    new_loc = loc - np.array(new_origo) 
+    new_loc = loc - np.array(new_origo)
     return new_loc / np.array(spawnbox.dimensions) * 2
 
 
 def normalize_rotations(rots: Union[np.ndarray, float]):
-    '''
+    """
     Normalize rotations, R -> [0, 1]
-    '''
+    """
     # Normalize then modulo
     # Rotations will become between [0, 1], where 0 is zero radians
     # and 1 is 2 pi radians
     # Python modulo: -0.75 % 1 -> 0.25
-    return (rots / (2*np.pi)) % 1
+    return (rots / (2 * np.pi)) % 1
 
 
 def create_datadir(dirname: Optional[str] = None) -> None:
@@ -178,10 +177,10 @@ def camera_view_bounds_2d(
 
     mat = cam_ob.matrix_world.normalized().inverted()
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    # me_ob.evaluated_get(depsgraph) crashed on Linux build in Blender 2.83.9, but works in 2.83.13. 
+    # me_ob.evaluated_get(depsgraph) crashed on Linux build in Blender 2.83.9, but works in 2.83.13.
     # Solution was to copy me_ob. first. But that resulted in memory leak.
-    mesh_eval = me_ob.evaluated_get(depsgraph)  
-    me = mesh_eval.to_mesh()  
+    mesh_eval = me_ob.evaluated_get(depsgraph)
+    me = mesh_eval.to_mesh()
     me.transform(me_ob.matrix_world)
     me.transform(mat)
 
@@ -448,7 +447,7 @@ class DatadumpVisitor(Scenevisitor):
         for obj in objects:
             objclass = obj.name.split(".")[0]
             dim = obj.dimensions
-            rot = normalize_rotations(np.array(obj.rotation_euler)) 
+            rot = normalize_rotations(np.array(obj.rotation_euler))
             loc = change_to_spawnbox_coords(np.array(obj.location))
             boxes_list.append((scene.name2num[objclass], np.concatenate((loc, dim, rot))))
 
@@ -494,7 +493,9 @@ class Scenemaker:
     Class for scene generation for fishes and stuff
     """
 
-    def __init__(self, src_collection: str = None, target_collection: str = None):
+    def __init__(
+        self, src_collection: Optional[str] = None, target_collection: Optional[str] = None
+    ):
         """
         Parameters
         ----------
@@ -509,8 +510,8 @@ class Scenemaker:
         if target_collection is None:
             target_collection = cng.TRGT_CLTN
 
-        self.src_collection = bpy.data.collections[src_collection]
-        self.target_collection = bpy.data.collections[target_collection]
+        self.src_collection: bpy.types.Object = bpy.data.collections[src_collection]
+        self.target_collection: bpy.types.Object = bpy.data.collections[target_collection]
         self.src_objects = tuple(bpy.data.collections[src_collection].all_objects)
 
         # Will update classdict in-place
@@ -519,6 +520,8 @@ class Scenemaker:
     def generate_scene(self, n: int = 3, spawnbox: Optional[str] = None) -> List[bpy.types.Object]:
         """
         Copy fishes from src_collection and place them within "spawnbox" (a box)
+
+        This will not clear the existing target collection before setting up a new scene
 
         Parameters
         -----------
@@ -533,9 +536,10 @@ class Scenemaker:
         self.src_objects: Tuple[bpy.types.Object]
         src_samples = random.choices(self.src_objects, k=n)
 
+        copies = []
         for obj, loc, rot in zip(src_samples, locs, rots):
-            new_obj = obj.copy() # Creates a "placeholder" that links to same attributes as orignal
-            new_obj.data = obj.data.copy() # VERY IMPORTANT, actually replaces important stuff
+            new_obj = obj.copy()  # Creates a "placeholder" that links to same attributes as orignal
+            new_obj.data = obj.data.copy()  # VERY IMPORTANT, actually replaces important stuff
 
             ##################################
             ### Set object attributes here ###
@@ -550,7 +554,9 @@ class Scenemaker:
 
             # Link to target collection
             self.target_collection.objects.link(new_obj)
-        return src_samples
+            copies.append(new_obj)
+
+        return copies
 
     def clear(self) -> None:
         """
@@ -572,19 +578,20 @@ class Scenemaker:
         """
         # self.name2num = {obj.name: i for i, obj in enumerate(self.src_objects)}
         # self.num2name = {i: obj.name for i, obj in enumerate(self.src_objects)}
-        
+
         self.name2num = cng.CLASS_DICT
         self.num2name = {v: k for k, v in cng.CLASS_DICT.items()}
         return self.name2num
 
+
 if __name__ == "__main__":
 
-
-    rots = np.array([
-        [14.09213638305664, -0.3313288390636444, 3.390078067779541],
-        [1.887033224105835, 2.353449821472168, 2.9758098125457764],
-        [2.039703369140625, -0.9868448376655579, 3.7885522842407227]
-    ])
+    rots = np.array(
+        [
+            [14.09213638305664, -0.3313288390636444, 3.390078067779541],
+            [1.887033224105835, 2.353449821472168, 2.9758098125457764],
+            [2.039703369140625, -0.9868448376655579, 3.7885522842407227],
+        ]
+    )
 
     normalize_rotations(rots)
-
