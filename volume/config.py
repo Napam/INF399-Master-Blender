@@ -21,10 +21,12 @@ CAMERA_OBJ_CENTER = "camera_C"  # Name of center camera object, should be same n
 CAMERA_OBJ_CENTER_TOP = "camera_C_TOP"  # Name of center camera object, should be same name in Blender file
 CAMERA_OBJ_LEFT = "camera_L"  # Name of left camera object, should be same name in Blender file
 CAMERA_OBJ_RIGHT = "camera_R"  # Name of right camera object, should be same name in Blender file
-ROT_MUS = [pi / 2, 0, pi]  # Mean rotation for fishes when generating
-ROT_STDS = [0.5, 1, 1]  # Std rotation for fishen when generating
+ROT_MUS = [0, 0, -0.5*pi]  # Mean rotation for fishes when generating
+ROT_STDS = [2*pi, 2*pi, 2*pi]  # Std rotation for fishen when generating
 DEFAULT_BBOX_MODE = "full"  # cps xyz full std
 COMMIT_INTERVAL = 32  # How often to commit to database (16 means commit at every 16th sample)
+RAND_SCALE_MU: float = 1
+RAND_SCALE_STD: float = 0.2
 CLASS_DICT = {  # Enforce class dictionary, inverse map: {v: k for k, v in CLASS_DICT.items()}
     "haddock": 0,
     "hake": 1,
@@ -33,6 +35,10 @@ CLASS_DICT = {  # Enforce class dictionary, inverse map: {v: k for k, v in CLASS
     "redgurnard": 4,
     "whiting": 5,
 }
+
+"""reconstruct.py"""
+DEFAULT_ALTER_COLOR = (0.2, 1, 0.2, 1) # R G B A
+DEFAULT_MIXSHADER_FAC = 0.2 # Mixing between transparent and texture
 
 """Filesystem, data and database"""
 GENERATED_DATA_DIR = "generated_data"

@@ -99,7 +99,7 @@ def select_collection(
     return list(collection.all_objects)
 
 
-def deselect_all():
+def deselect_all() -> None:
     """Deselects everything"""
     # Deselect everything first
     bpy.ops.object.select_all(action="DESELECT")
@@ -110,7 +110,7 @@ def rm_collection(
     materials: bool = True,
     meshes: bool = True,
     lights: bool = True,
-):
+) -> None:
     """Remove objects in given collection and unused materials, meshes and lights
 
     Parameters
@@ -127,11 +127,16 @@ def rm_collection(
     if isinstance(collection, str):
         collection: bpy.types.Collection = bpy.data.collections[collection]
 
-    [bpy.data.objects.remove(c, do_unlink=True) for c in collection.objects]
-    if materials:
-        unused_remover(bpy.data.materials)
+    for obj in collection.objects:
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+    # IMPORTANT: Must be removed in this order to get expected behavior. See:
+    # https://blender.stackexchange.com/questions/102025/how-to-prevent-memory-leakage-in-blender
+    # Basically, meshes "uses" materials and so on ...
     if meshes:
         unused_remover(bpy.data.meshes)
+    if materials:
+        unused_remover(bpy.data.materials)
     if lights:
         unused_remover(bpy.data.lights)
 
@@ -158,6 +163,14 @@ def render_and_save(filepath: str, fileformat: Optional[str] = None) -> dict:
     bpy.context.scene.render.image_settings.file_format = fileformat
     bpy.context.scene.render.filepath = filepath
     return bpy.ops.render.render(write_still=True)
+
+
+def clear_all_node_links(material: bpy.types.Material):
+    """
+    Clears all linkes between shader nodes in given material 
+    """
+    for link in material.node_tree.links:
+        material.node_tree.links.remove(link)
 
 
 def add_object(

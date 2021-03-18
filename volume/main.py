@@ -135,12 +135,9 @@ def assert_image_saved(filepath: str, view_mode: str) -> None:
 
         if not (center_path and center_top_path):
             raise FileNotFoundError(errormsgs)
-    if view_mode in ("center", "all"):
+    if view_mode == "center":
         print(f"Asserting singleview ({yellow('center')}) output")
-        path = filepath
-        if view_mode == "all":
-            path += cng.FILE_SUFFIX_CENTER
-        path += cng.DEFAULT_FILEFORMAT_EXTENSION
+        path = filepath + cng.DEFAULT_FILEFORMAT_EXTENSION
         file_exists = os.path.exists(path)
         if not file_exists:
             raise FileNotFoundError(f"Center image not found, expected to find: \n\t{path}")

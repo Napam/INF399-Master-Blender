@@ -546,7 +546,7 @@ class Scenemaker:
             ##################################
             new_obj.location = loc
             new_obj.rotation_euler = rot  # Treated as radians
-            new_obj.scale *= np.random.normal(loc=1, scale=0.1)
+            new_obj.scale *= np.random.normal(loc=cng.RAND_SCALE_MU, scale=cng.RAND_SCALE_STD)
             new_obj.show_bounds = True
             new_obj.show_name = False
             ##################################
