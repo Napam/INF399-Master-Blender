@@ -500,7 +500,7 @@ class Scenemaker:
         Parameters
         ----------
         src_collection: name of collection containing source objects to be copied,
-                           defaults to "Originals"
+                        defaults to "Originals"
 
         target_collection: name of collection to contain copied objects
         """

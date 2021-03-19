@@ -324,9 +324,9 @@ def set_attrs_view(mode: str) -> None:
 
 
 @utils.section("Clear data")
-def clear_generated_data() -> None:
-    """Removes the directory cng.GENEREATED_DATA_DIR"""
-    print("Clearing generated data")
+def clear_generated_data(directory: str) -> None:
+    """Removes the given directory"""
+    print(f"Initalizing clearing process of directy {directory}")
     import errno, stat, shutil
 
     def handleRemoveReadonly(func: Callable, path: str, exc):
@@ -338,9 +338,9 @@ def clear_generated_data() -> None:
             else:
                 raise exc[1]
         except FileNotFoundError:
-            print(f"{cng.GENERATED_DATA_DIR} not found, doing nothing")
+            print(f"{directory} not found, doing nothing")
 
-    shutil.rmtree(cng.GENERATED_DATA_DIR, ignore_errors=False, onerror=handleRemoveReadonly)
+    shutil.rmtree(directory, ignore_errors=False, onerror=handleRemoveReadonly)
 
 
 def set_attrs_dir(dir_: str) -> None:
@@ -352,7 +352,7 @@ def handle_clear(clear: bool, clear_exit: bool) -> None:
     Handles --clear and --clear-exit options
     """
     if (clear or clear_exit) == True:
-        clear_generated_data()
+        clear_generated_data(cng.GENERATED_DATA_DIR)
         if clear_exit == True:
             print("Exiting")
             exit()

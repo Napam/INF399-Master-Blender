@@ -4,11 +4,11 @@ import sqlite3 as db
 import os
 
 GEN_DIR = pathlib.Path(cng.GENERATED_DATA_DIR)
-
+LABELCHECK_DIR = pathlib.Path(cng.LABELCHECK_DATA_DIR)
 
 class DatabaseMaker:
     """
-    Used for setting up sqlite3 database
+    Used for setting up sqlite3 database for generated data
     """
 
     def __init__(self):
@@ -127,6 +127,20 @@ class DatabaseMaker:
             )
         """
         )
+    
+    def create_labelcheck_table(self) -> None:
+        """
+        Creating tables does not require commiting.
+        sqlite3 will raise error if table already exists
+        """
+        self.cursor.execute(
+            f"""
+            CREATE TABLE {cng.LABELCHECK_DB_TABLE_RENDERED} (
+                {cng.LABELCHECK_DB_IMGNR} INTEGER NOT NULL PRIMARY KEY
+            )
+        """
+        )
+
 
 
 if __name__ == "__main__":
