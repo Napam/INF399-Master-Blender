@@ -7,7 +7,7 @@ Written by Naphat Amundsen
 import os
 import pathlib
 import sys
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import bpy
 import numpy as np
@@ -27,71 +27,30 @@ import utils
 
 import generate as gen
 from setup_db import DatabaseMaker
-import functools
 
 
-def yellow(string: str):
-    return f"\033[33m{string}\033[0m"
-
-
-def red(string: str):
-    return f"\033[31m{string}\033[0m"
-
-
-def print_boxed(*args: Tuple[str], end="\n") -> None:
-    """
-    Encloses strings in a big box for extra visibility
-
-    I'm a bit extra sometimes u know?
-    """
-
-    width = max(max(map(len, args)) + 2 * len(cng.BOXED_STR_SIDE) + 2, cng.HIGHLIGHT_MIN_WIDTH)
-
-    print(f"{'':{cng.BOXED_SYMBOL_TOP}^{width}}")
-    for info in args:
-        print(f"{cng.BOXED_STR_SIDE}{info:^{width-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}")
-    print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{width}}", end=end)
-
-
-def section(info: str) -> Callable:
-    """Decorator that takes in argument for informative text"""
-
-    def section_decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            print(f"{f' {info} ':{cng.SECTION_SYMBOL}^{cng.HIGHLIGHT_MIN_WIDTH}}")
-            print(end=cng.SECTION_START_STR)
-            result = f(*args, **kwargs)
-            print(end=cng.SECTION_END_STR)
-            return result
-
-        return wrapper
-
-    return section_decorator
-
-
-@section("Data directory")
+@utils.section("Data directory")
 def check_generate_datadir() -> None:
     """Checks and if necessary, sets up directories and sqlite3 database """
     # If generated data directory does NOT exit
     if not os.path.isdir(cng.GENERATED_DATA_DIR):
         # Create directory
         print(f"Directory for generated data not found")
-        print(f"Creating directory for generated data: {yellow(cng.GENERATED_DATA_DIR)}")
+        print(f"Creating directory for generated data: {utils.yellow(cng.GENERATED_DATA_DIR)}")
         pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
     else:
-        print(f"Found directory for generated data: {yellow(cng.GENERATED_DATA_DIR)}")
+        print(f"Found directory for generated data: {utils.yellow(cng.GENERATED_DATA_DIR)}")
 
     db_path = os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)
     if not os.path.isfile(db_path):
-        print(f"DB not found, setting up DB at {yellow(db_path)}")
+        print(f"DB not found, setting up DB at {utils.yellow(db_path)}")
         # Setup database
         db_ = DatabaseMaker()
         # Create all tables
         for f in db_.table_create_funcs:
             f()
     else:
-        print(f"Found database file: {yellow(db_path)}")
+        print(f"Found database file: {utils.yellow(db_path)}")
 
 
 def assert_image_saved(filepath: str, view_mode: str) -> None:
@@ -104,7 +63,7 @@ def assert_image_saved(filepath: str, view_mode: str) -> None:
     errormsgs = "Render results are missing:"
 
     if view_mode in ("leftright", "all"):
-        print(f"Asserting multiview ({yellow('leftright')}) output")
+        print(f"Asserting multiview ({utils.yellow('leftright')}) output")
         l_path = filepath + f"{cng.FILE_SUFFIX_LEFT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
         r_path = filepath + f"{cng.FILE_SUFFIX_RIGHT}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
 
@@ -119,7 +78,7 @@ def assert_image_saved(filepath: str, view_mode: str) -> None:
         if not (l_exists and r_exists):
             raise FileNotFoundError(errormsgs)
     if view_mode in ("topcenter", "all"):
-        print(f"Asserting multiview ({yellow('topcenter')}) output")
+        print(f"Asserting multiview ({utils.yellow('topcenter')}) output")
         center_path = filepath + f"{cng.FILE_SUFFIX_CENTER}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
         center_top_path = (
             filepath + f"{cng.FILE_SUFFIX_CENTER_TOP}{cng.DEFAULT_FILEFORMAT_EXTENSION}"
@@ -130,13 +89,13 @@ def assert_image_saved(filepath: str, view_mode: str) -> None:
 
         if not center_exists:
             errormsgs += f"\nCenter image not found, expected to find: \n\t{center_path}"
-        if not center_top_path:
+        if not centertop_exists:
             errormsgs += f"\nTop center image not found, expected to find: \n\t{center_top_path}"
 
         if not (center_path and center_top_path):
             raise FileNotFoundError(errormsgs)
     if view_mode == "center":
-        print(f"Asserting singleview ({yellow('center')}) output")
+        print(f"Asserting singleview ({utils.yellow('center')}) output")
         path = filepath + cng.DEFAULT_FILEFORMAT_EXTENSION
         file_exists = os.path.exists(path)
         if not file_exists:
@@ -183,7 +142,7 @@ def main(
 
     imgpath = str(dirpath / cng.GENERATED_DATA_DIR / cng.IMAGE_DIR / cng.IMAGE_NAME)
 
-    print_boxed(
+    utils.print_boxed(
         "Output information:",
         f"Imgs to render: {n}",
         f"Starting at index: {maxid}",
@@ -195,13 +154,13 @@ def main(
     )
 
     if wait:
-        input("Press enter to start rendering")
+        input("Press enter to start rendering\n")
 
     def commit():
-        print_boxed(f"Commited to {cng.BBOX_DB_FILE}")
+        utils.print_boxed(f"Commited to {cng.BBOX_DB_FILE}")
         con.commit()
 
-    print_boxed("Rendering initialized")
+    utils.print_boxed("Rendering initialized")
 
     commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
@@ -236,7 +195,7 @@ def main(
     con.close()
 
 
-@section("Device")
+@utils.section("Device")
 def set_attrs_device(target_device: str) -> None:
     """target_device can be CUDA or CPU"""
     assert target_device in ("CUDA", "CPU")
@@ -254,7 +213,7 @@ def set_attrs_device(target_device: str) -> None:
         bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
         for device in devices:
             if device.type == target_device:
-                print(f"Enabling device: {yellow(device.id)}")
+                print(f"Enabling device: {utils.yellow(device.id)}")
                 device.use = True
             else:
                 device.use = False
@@ -270,12 +229,12 @@ def set_attrs_device(target_device: str) -> None:
     print(f"Cycles device is now preemptively set to: {bpy.context.scene.cycles.device}")
 
 
-@section("Engine")
+@utils.section("Engine")
 def set_attrs_engine(engine: str, samples: int) -> None:
     assert engine in ("BLENDER_EEVEE", "CYCLES")
 
     bpy.context.scene.render.engine = engine
-    print(f"Render engine is now set to: {yellow(bpy.context.scene.render.engine)}")
+    print(f"Render engine is now set to: {utils.yellow(bpy.context.scene.render.engine)}")
 
     if engine == "CYCLES":
         bpy.context.scene.cycles.progressive = "BRANCHED_PATH"
@@ -289,16 +248,20 @@ def set_attrs_engine(engine: str, samples: int) -> None:
         print(f"Eevee will render with {bpy.context.scene.eevee.taa_render_samples} samples")
 
 
-@section("View mode")
+@utils.section("View mode")
 def set_attrs_view(mode: str) -> None:
     """
+    Select which cameras to do rendering
+
     modes:
         'center'
         'leftright'
         'topcenter'
         'all'
     """
+    assert mode in ('center', 'leftright', 'topcenter', 'all')
     print(f"View mode: {mode}")
+
     if mode == "center":
         bpy.context.scene.render.use_multiview = False
     elif mode in ("leftright", "topcenter", "all"):
@@ -310,35 +273,48 @@ def set_attrs_view(mode: str) -> None:
         "MULTIVIEW"  # no effect if bpy.context.scene.render.use_multiview = False
     )
 
+    views = bpy.context.scene.render.views
+    cams: Mapping[str, bpy.types.Object] = bpy.data.collections[cng.CAM_CLTN].objects
+
     # Keys correspond to "Output properties" -> Stereoscopy -> Multi-View in Blender
-    bpy.context.scene.render.views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
-    bpy.context.scene.render.views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
-    bpy.context.scene.render.views["center"].file_suffix = cng.FILE_SUFFIX_CENTER
-    bpy.context.scene.render.views["center_top"].file_suffix = cng.FILE_SUFFIX_CENTER_TOP
+    views["left"].file_suffix = cng.FILE_SUFFIX_LEFT
+    views["right"].file_suffix = cng.FILE_SUFFIX_RIGHT
+    views["center"].file_suffix = cng.FILE_SUFFIX_CENTER
+    views["center_top"].file_suffix = cng.FILE_SUFFIX_CENTER_TOP
 
-    # (left, right, center, center_top)
-    cammask = (False, False, True, False)  # Defaults to center only, also to make PyLance happy
+    view2cam = {
+        "left": cams[cng.CAMERA_OBJ_LEFT],
+        "right": cams[cng.CAMERA_OBJ_RIGHT],
+        "center": cams[cng.CAMERA_OBJ_CENTER],
+        "center_top": cams[cng.CAMERA_OBJ_CENTER_TOP]
+    }
+    
+    views_dict: Dict[str, bool] = {"center":False, "top_center":False, "left":False, "right":False}
 
-    if mode == "center":  # Know this is redundant, but it is to emphasize all possible choices
-        cammask = (False, False, True, False)
+    if mode == "center": 
+        views_dict["center"] = True
     elif mode == "leftright":
-        cammask = (True, True, False, False)
+        views_dict["left"] = True
+        views_dict["right"] = True
     elif mode == "topcenter":
-        cammask = (False, False, True, True)
+        views_dict["center"] = True
+        views_dict["center_top"] = True
     elif mode == "all":
-        cammask = (True, True, True, True)
+        views_dict["left"] = True
+        views_dict["right"] = True
+        views_dict["center"] = True
+        views_dict["center_top"] = True
 
-    (
-        bpy.context.scene.render.views["left"].use,
-        bpy.context.scene.render.views["right"].use,
-        bpy.context.scene.render.views["center"].use,
-        bpy.context.scene.render.views["center_top"].use,
-    ) = cammask
+    # Disables all cameras in Properties pane -> Output properties -> Stereoscopy -> Multi-View
+    # to get a "clean slate"
+    for camera in bpy.context.scene.render.views:
+        camera.use = False
 
-    cameras: Tuple[bpy.types.Object] = tuple(bpy.data.collections[cng.CAM_CLTN].all_objects)
-    for use, cam in zip(cammask, cameras):
+    for view_name, use in views_dict.items():
         if use:
-            print(f"{cam.name} will be used for rendering")
+            views[view_name].use = True
+            cam = view2cam[view_name]
+            print(f"Camera '{utils.yellow(cam.name)}' will be used for rendering")
             cam.data.type = "PERSP"
             cam.data.lens_unit = "FOV"
             cam.data.angle = 1.0471975803375244  # 60 degrees in radians
@@ -347,7 +323,7 @@ def set_attrs_view(mode: str) -> None:
             print(f"{cam.name}'s attributes are set to hardcoded values")
 
 
-@section("Clear data")
+@utils.section("Clear data")
 def clear_generated_data() -> None:
     """Removes the directory cng.GENEREATED_DATA_DIR"""
     print("Clearing generated data")
@@ -393,7 +369,7 @@ def handle_bbox(bbox: str) -> Tuple[str]:
     return bbox_
 
 
-@section("Standard bounding box options")
+@utils.section("Standard bounding box options")
 def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
     """
     Takes --stdbboxcam and --view-mode arguments and returns a camera object
@@ -417,18 +393,17 @@ def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
     print(f"Choice of camera: {camchoice}")
     if not camchoice in dicky[view_mode]:
         print(
-            f"{red('WARNING:')} Choice of stdbbox camera is \"{camchoice}\", which is not\n"
+            f"{utils.red('WARNING:')} Choice of stdbbox camera is \"{camchoice}\", which is not\n"
             f"{' '*len('WARNING: ')}included for rendering since view mode is \"{view_mode}\""
         )
 
     # Should match the name of corresponding camera in Blender
     camera_name: str = camdict[camchoice]
-    info = "{} will be used to calculate standard bounding boxes"
-    print(info.format(camera_name))
+    print(f"{utils.yellow(camera_name)} will be used to calculate standard bounding boxes")
     return bpy.data.objects[camera_name]
 
 
-@section("Show reference")
+@utils.section("Show reference")
 def show_reference(hide: bool) -> None:
     """Show reference collection or not. Reference collection contains object used to sanity
     check Blender stuff.
@@ -442,7 +417,7 @@ def show_reference(hide: bool) -> None:
 
 
 if __name__ == "__main__":
-    print_boxed(
+    utils.print_boxed(
         "FISH GENERATION BABYYY",
         f"Blender version: {bpy.app.version_string}",
         f"Python version: {sys.version.split()[0]}",
@@ -502,10 +477,9 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-w",
-        "--wait",
-        help="Ask for user to press enter before starting rendering process",
-        action="store_true",
+        "--no-wait",
+        help="Dont wait for user input before rendering",
+        action="store_false",
     )
 
     parser.add_argument(
@@ -532,7 +506,7 @@ if __name__ == "__main__":
     main(
         n=args.n_imgs,
         bbox_modes=handle_bbox(args.bbox),
-        wait=args.wait,
+        wait=args.no_wait,
         stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
         view_mode=args.view_mode,
     )

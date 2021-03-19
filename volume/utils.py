@@ -13,11 +13,51 @@ Written by Naphat Amundsen
 """
 
 import bpy
-from typing import Callable, Optional, Union
-import pathlib
+from typing import Callable, Optional, Union, Tuple, Any
 import config as cng
 import argparse
 import sys
+import functools
+
+
+def print_boxed(*args: Tuple[str], end="\n") -> None:
+    """
+    Encloses strings in a big box for extra visibility
+
+    I'm a bit extra sometimes u know?
+    """
+
+    width = max(max(map(len, args)) + 2 * len(cng.BOXED_STR_SIDE) + 2, cng.HIGHLIGHT_MIN_WIDTH)
+
+    print(f"{'':{cng.BOXED_SYMBOL_TOP}^{width}}")
+    for info in args:
+        print(f"{cng.BOXED_STR_SIDE}{info:^{width-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}")
+    print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{width}}", end=end)
+
+
+def section(info: str) -> Callable:
+    """Decorator that takes in argument for informative text"""
+
+    def section_decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs) -> Any:
+            print(f"{f' {info} ':{cng.SECTION_SYMBOL}^{cng.HIGHLIGHT_MIN_WIDTH}}")
+            print(end=cng.SECTION_START_STR)
+            result = f(*args, **kwargs)
+            print(end=cng.SECTION_END_STR)
+            return result
+
+        return wrapper
+
+    return section_decorator
+
+
+def yellow(string: str):
+    return f"\033[33m{string}\033[0m"
+
+
+def red(string: str):
+    return f"\033[31m{string}\033[0m"
 
 
 class ArgumentParserForBlender(argparse.ArgumentParser):
@@ -171,6 +211,15 @@ def clear_all_node_links(material: bpy.types.Material):
     """
     for link in material.node_tree.links:
         material.node_tree.links.remove(link)
+
+
+def disable_all_render_views():
+    """
+    Disables all cameras in 
+    Properties pane -> Output properties -> Stereoscopy -> Multi-View
+    """
+    for camera in bpy.context.scene.render.views:
+        camera.use = False
 
 
 def add_object(
