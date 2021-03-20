@@ -38,6 +38,7 @@ volume/.bash_history
 *volume/objdet_std_data
 *volume/leftright_left_data
 *volume/3d_data
+*volume/label_renders
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
