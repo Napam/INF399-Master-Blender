@@ -113,7 +113,7 @@ class Sceneloader:
 
         Initializes self.con, and self.c
         """
-        self.con = db.connect(f"file:{os.path.join(self.data_dir, 'bboxes.db')}?mode=ro", uri=True)
+        self.con = db.connect(f"file:{os.path.join(self.data_dir, cng.BBOX_DB_FILE)}?mode=ro", uri=True)
         self.c = self.con.cursor()
 
         # Assert that the table "bboxes_full" exists

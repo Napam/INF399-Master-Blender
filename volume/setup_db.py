@@ -1,4 +1,5 @@
 import pathlib
+from typing import Callable, Optional, Tuple
 import config as cng
 import sqlite3 as db
 import os
@@ -11,14 +12,14 @@ class DatabaseMaker:
     Used for setting up sqlite3 database for generated data
     """
 
-    def __init__(self):
+    def __init__(self, file: str):
         """
         Connects to .db file on initialization, creates one if not existing
         """
         # This makes the .db file if not existing
-        self.con = db.connect(os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE))
-        self.cursor = self.con.cursor()
-        self.table_create_funcs = (
+        self.con: db.Connection = db.connect(file)
+        self.cursor: db.Cursor = self.con.cursor()
+        self.table_create_funcs: Tuple[Callable] = (
             self.create_bboxes_cps_table,
             self.create_bboxes_xyz_table,
             self.create_bboxes_std_table,
@@ -132,10 +133,12 @@ class DatabaseMaker:
         """
         Creating tables does not require commiting.
         sqlite3 will raise error if table already exists
+
+        This is not supposed to be included in self.table_create_funcs
         """
         self.cursor.execute(
             f"""
-            CREATE TABLE {cng.LABELCHECK_DB_TABLE_RENDERED} (
+            CREATE TABLE {cng.LABELCHECK_DB_TABLE} (
                 {cng.LABELCHECK_DB_IMGNR} INTEGER NOT NULL PRIMARY KEY
             )
         """

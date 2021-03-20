@@ -30,22 +30,23 @@ from setup_db import DatabaseMaker
 
 
 @utils.section("Data directory")
-def check_generate_datadir() -> None:
+def check_or_create_datadir(directory: str, db_file: str) -> None:
     """Checks and if necessary, sets up directories and sqlite3 database """
     # If generated data directory does NOT exit
-    if not os.path.isdir(cng.GENERATED_DATA_DIR):
+    if not os.path.isdir(directory):
         # Create directory
         print(f"Directory for generated data not found")
-        print(f"Creating directory for generated data: {utils.yellow(cng.GENERATED_DATA_DIR)}")
-        pathlib.Path(dirpath / cng.GENERATED_DATA_DIR).mkdir(parents=True, exist_ok=True)
+        print(f"Creating directory for generated data: {utils.yellow(directory)}")
+        pathlib.Path(dirpath / directory).mkdir(parents=True, exist_ok=True)
     else:
-        print(f"Found directory for generated data: {utils.yellow(cng.GENERATED_DATA_DIR)}")
+        print(f"Found directory for generated data: {utils.yellow(directory)}")
 
-    db_path = os.path.join(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)
+    db_path = os.path.join(directory, db_file)
     if not os.path.isfile(db_path):
         print(f"DB not found, setting up DB at {utils.yellow(db_path)}")
         # Setup database
-        db_ = DatabaseMaker()
+        print("Creating instance of DatabaseMaker to create database")
+        db_ = DatabaseMaker(db_path)
         # Create all tables
         for f in db_.table_create_funcs:
             f()
@@ -103,7 +104,12 @@ def assert_image_saved(filepath: str, view_mode: str) -> None:
 
 
 def main(
-    n: int, bbox_modes: Sequence[str], wait: bool, stdbboxcam: bpy.types.Object, view_mode: str
+    n: int,
+    bbox_modes: Sequence[str],
+    wait: bool,
+    stdbboxcam: bpy.types.Object,
+    view_mode: str,
+    nspawnrange: Tuple[int, int],
 ) -> None:
     """Main function for generating data with Blender
 
@@ -120,7 +126,7 @@ def main(
     view_mode : str
         Essentially which cameras to render from,
     """
-    check_generate_datadir()
+    check_or_create_datadir(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)
 
     scene = gen.Scenemaker()
     gen.create_metadata(scene)
@@ -165,7 +171,7 @@ def main(
     commit_flag: bool = False  # To make Pylance happy
     for i in range(maxid, maxid + n):
         scene.clear()
-        scene.generate_scene(np.random.randint(1, 6))
+        scene.generate_scene(np.random.randint(*nspawnrange))
         imgfilepath = imgpath + str(i)
         print(f"Starting to render imgnr {i}")
         utils.render_and_save(imgfilepath)
@@ -241,7 +247,7 @@ def set_attrs_engine(engine: str, samples: int) -> None:
         bpy.context.scene.cycles.samples = samples  # .samples for PATH tracing, not r eally used
         bpy.context.scene.cycles.aa_samples = samples  # .aa_samples for BRANCHED_PATH tracing
         print(f"Cycles is set to: {bpy.context.scene.cycles.progressive}")
-        print(f"Cycles will render with {bpy.context.scene.cycles.aa_samples} samples")
+        print(f"Cycles will render with {utils.yellow(str(bpy.context.scene.cycles.aa_samples))} samples")
     elif engine == "BLENDER_EEVEE":
         # EEVEE only works with GPU, no need to explicitly set GPU usage
         bpy.context.scene.eevee.taa_render_samples = samples
@@ -259,7 +265,7 @@ def set_attrs_view(mode: str) -> None:
         'topcenter'
         'all'
     """
-    assert mode in ('center', 'leftright', 'topcenter', 'all')
+    assert mode in ("center", "leftright", "topcenter", "all")
     print(f"View mode: {mode}")
 
     if mode == "center":
@@ -286,12 +292,17 @@ def set_attrs_view(mode: str) -> None:
         "left": cams[cng.CAMERA_OBJ_LEFT],
         "right": cams[cng.CAMERA_OBJ_RIGHT],
         "center": cams[cng.CAMERA_OBJ_CENTER],
-        "center_top": cams[cng.CAMERA_OBJ_CENTER_TOP]
+        "center_top": cams[cng.CAMERA_OBJ_CENTER_TOP],
     }
-    
-    views_dict: Dict[str, bool] = {"center":False, "top_center":False, "left":False, "right":False}
 
-    if mode == "center": 
+    views_dict: Dict[str, bool] = {
+        "center": False,
+        "top_center": False,
+        "left": False,
+        "right": False,
+    }
+
+    if mode == "center":
         views_dict["center"] = True
     elif mode == "leftright":
         views_dict["left"] = True
@@ -389,7 +400,7 @@ def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
         "topcenter": {"top", "center"},
         "center": {"center"},
     }
-    
+
     print(f"Choice of camera: {camchoice}")
     if not camchoice in dicky[view_mode]:
         print(
@@ -403,7 +414,7 @@ def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
     return bpy.data.objects[camera_name]
 
 
-@utils.section("Show reference")
+@utils.section("Show reference (UiB owl)")
 def show_reference(hide: bool) -> None:
     """Show reference collection or not. Reference collection contains object used to sanity
     check Blender stuff.
@@ -414,6 +425,26 @@ def show_reference(hide: bool) -> None:
     """
     bpy.data.collections[cng.REF_CLTN].hide_render = hide
     print(f"Hide objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}")
+
+
+@utils.section("Number of fish to spawn")
+def handle_minmax(minmax: Optional[Tuple[int, int]]) -> Tuple[int, int]:
+    """Handles --minmax option that should give a list of two ints
+
+    Parameters
+    ----------
+    minmax : Optional[Tuple[int, int]]
+        spawn range ~Uniform(*minmax)
+    """
+    if minmax is None: 
+        minmax = cng.DEFAULT_SPAWNRANGE
+        
+    assert len(minmax) == 2
+    assert isinstance(minmax[0], int)
+    assert isinstance(minmax[1], int)
+
+    print(f"Number of fish in a scene will be sampled from {utils.yellow(f'Uniform({minmax[0]}, {minmax[1]})')}")
+    return minmax
 
 
 if __name__ == "__main__":
@@ -466,7 +497,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-r", "--reference", help="Include reference objects in render", action="store_false"
+        "--reference", help="Include reference objects in render", action="store_false"
     )
 
     parser.add_argument(
@@ -495,6 +526,13 @@ if __name__ == "__main__":
         default=cng.ARGS_DEFAULT_STDBBOX_CAM,
     )
 
+    parser.add_argument(
+        "--minmax",
+        help=f"The number of fish in a scene is sampled from ~U(min, max), nrange specifies min max",
+        type=int,
+        nargs=2,
+    )
+
     args = parser.parse_args()
     set_attrs_dir(args.dir)
     set_attrs_device(args.device)
@@ -509,4 +547,5 @@ if __name__ == "__main__":
         wait=args.no_wait,
         stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
         view_mode=args.view_mode,
+        nspawnrange=handle_minmax(args.minmax)
     )

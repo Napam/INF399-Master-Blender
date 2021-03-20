@@ -35,6 +35,7 @@ CLASS_DICT = {  # Enforce class dictionary, inverse map: {v: k for k, v in CLASS
     "redgurnard": 4,
     "whiting": 5,
 }
+DEFAULT_SPAWNRANGE = (1, 6) # Draw from uniform dist (1, 6) to determine how many fish to spawn
 
 """reconstruct.py"""
 DEFAULT_ALTER_COLOR = (0.2, 1, 0.2, 1) # R G B A
@@ -63,13 +64,13 @@ FILE_SUFFIX_CENTER = "_C"
 FILE_SUFFIX_LEFT = "_L"  # Rendering only from one direction will not generate file suffixes
 FILE_SUFFIX_RIGHT = "_R"
 FILE_SUFFIX_CENTER_TOP = "_C_TOP"
-RENDER_RES_X = 416  # Render res is atm or documentation only, the code wont use it atm
-RENDER_RES_Y = 416
+RENDER_RES_X = 416 # Render res is atm or documentation only, the code wont use it atm
+RENDER_RES_Y = 416 # Render res is atm or documentation only, the code wont use it atm
 
-LABELCHECK_DATA_DIR = "label_renders"
+LABELCHECK_DATA_DIR = "label_renders" # "root" directory for labelchekc output
 LABELCHECK_IMAGE_DIR = "reconstructed_labels"  # Will be placed in LABELCHECK_DATA_DIR
-LABELCHECK_IMAGE_NAME = "reconstructedimg"
-LABELCHECK_DB_TABLE_RENDERED = "rendered" 
+LABELCHECK_IMAGE_NAME = "reimg"
+LABELCHECK_DB_TABLE = "rendered" 
 LABELCHECK_DB_IMGNR = "imgnr" 
 LABELCHECK_DB_FILE = "reconstructedlabels.db"
 
