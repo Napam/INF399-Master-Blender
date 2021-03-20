@@ -5,4 +5,4 @@ screen -L -Logfile screen.log -S render ./render.sh \
     --dir 3d_data \
     --stdbboxcam left \
     --view-mode all \
-    20000
+    5000
