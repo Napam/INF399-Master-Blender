@@ -23,7 +23,8 @@ dirpath = pathlib.Path(dir_)
 
 import config as cng
 import utils
-import pandas as pd 
+import pandas as pd
+import numpy as np
 from debug import debug, debugs, debugt
 from setup_db import DatabaseMaker
 import reconstruct as recon
@@ -63,7 +64,9 @@ def check_generated_datadir(directory: str, db_file: str) -> None:
     print(f"Specified directory for generated data (ground truths):\n\t{directory}")
     # If generated data directory does NOT exit
     if not os.path.isdir(directory):
-        raise FileNotFoundError(f"{utils.red('Cannot find')} generated data at '{utils.yellow(directory)}'")
+        raise FileNotFoundError(
+            f"{utils.red('Cannot find')} generated data at '{utils.yellow(directory)}'"
+        )
     else:
         print(f"Found directory for generated data: {utils.yellow(directory)}")
 
@@ -75,7 +78,12 @@ def check_generated_datadir(directory: str, db_file: str) -> None:
 
 
 def renderloop_imgnrs(
-    imgnrs: Sequence[int], imgpath: str, wait: bool, view_mode: str, con: db.Connection, cursor: db.Cursor
+    imgnrs: Sequence[int],
+    imgpath: str,
+    wait: bool,
+    view_mode: str,
+    con: db.Connection,
+    cursor: db.Cursor,
 ):
 
     utils.print_boxed(
@@ -121,9 +129,14 @@ def renderloop_imgnrs(
 
 
 def renderloop_imgrange(
-    imgrange: Tuple[int, int], imgpath: str, wait: bool, view_mode: str, con: db.Connection, cursor: db.Cursor
+    imgrange: Tuple[int, int],
+    imgpath: str,
+    wait: bool,
+    view_mode: str,
+    con: db.Connection,
+    cursor: db.Cursor,
 ):
-    
+
     rng = range(*imgrange)
 
     utils.print_boxed(
@@ -177,7 +190,99 @@ def renderloop_predfile(predfile: str):
         [description]
     """
     df = pd.read_csv(predfile)
+
+
+class LabelRenderer(mainfile.BaseBlenderRender):
+    def __init__(
+        self,
+        data_recon_dir: str,
+        data_labels_dir: str,
+        img_dir: str,
+        base_img_name: str,
+        wait: bool,
+        view_mode: str,
+        interval: Optional[int],
+        *,
+        imgnrs: Optional[Iterable[int]] = None,
+        predfile: Optional[str] = None,
+        imgrange: Optional[Tuple[int, int]] = None,
+    ):
+        super().__init__(data_recon_dir, img_dir, base_img_name, wait, view_mode, interval=interval)
+        n_assert_arg = (imgnrs, predfile, imgrange).count(None)
+        if n_assert_arg == 0:
+            raise AssertionError(
+                "Expected one of ('imgnrs', 'predfile', 'imgrange') to be specified, but got none"
+            )
+        elif n_assert_arg != 2:
+            raise AssertionError(
+                "Expected ONLY one of ('imgnrs', 'predfile', 'imgrange') to be specified,"
+                f" but got {3-n_assert_arg}"
+            )
+        
+        check_generated_datadir(data_labels_dir, cng.BBOX_DB_FILE)
+        check_or_create_datadir(cng.LABELCHECK_DATA_DIR, cng.LABELCHECK_DB_FILE)
+
+        self.imgnrs: Optional[Iterable[int]] = imgnrs
+        self.predfile: Optional[str] = predfile
+        self.imgrange: Optional[Tuple[int, int]] = imgrange
+
+        self.loader = recon.Sceneloader(data_labels_dir)
+        self.imgpath = str(  
+            dirpath / cng.LABELCHECK_DATA_DIR / cng.LABELCHECK_IMAGE_DIR / cng.LABELCHECK_IMAGE_NAME
+        )
+        self.con = db.connect(str(dirpath / cng.LABELCHECK_DATA_DIR / cng.LABELCHECK_DB_FILE))
+        self.cursor = self.con.cursor()
+
+        self.iter_callback = self.sql_insert
+        self.interval_callback = self.commit
+        self.end_callback = self.close_con
+
+    def sql_insert(self, imgnr: int):
+        self.cursor.execute(f"INSERT OR REPLACE INTO {cng.LABELCHECK_DB_TABLE} VALUES ({imgnr})")
+
+    def commit(self, imgnr: int = None):
+        utils.print_boxed(f"Commited to {cng.LABELCHECK_DB_FILE}")
+        self.con.commit()
+
+    def close_con(self):
+        utils.print_boxed(f"Closed connection to generate {cng.LABELCHECK_DB_FILE}")
+        self.con.close()
     
+    def initalize_imgnr_iter(self):
+        output_info = []
+        if self.imgnrs:
+            self.imgnr_iter = self.imgnrs
+            output_info.append("Rendering given imgnrs")
+            self.setup_scene = self._setup_scene_db
+        if self.imgrange:
+            assert len(self.imgrange) == 2
+            assert isinstance(self.imgrange[0], int)
+            assert isinstance(self.imgrange[1], int)
+            self.imgnr_iter = range(self.imgrange[0], self.imgrange[1])
+            output_info.append(f"Rendering given imgrange: {self.imgnr_iter}")
+            self.setup_scene = self._setup_scene_db
+        if self.predfile:
+            df = pd.read_csv(self.predfile)
+            self.imgnr_iter = np.unique(df.imgnr)
+            self.setup_scene_kwargs = {"df":df}
+            self.setup_scene = self._setup_scene_df
+            output_info.append("CSV!!!")
+
+        self.pre_loop_messages = (
+            f"Imgs to render: {len(self.imgnr_iter)}",
+            *output_info,
+            f"Saves images at: {os.path.join(cng.LABELCHECK_DATA_DIR, cng.LABELCHECK_IMAGE_DIR)}",
+            f"Sqlite3 DB at: {os.path.join(cng.LABELCHECK_DATA_DIR, cng.LABELCHECK_DB_FILE)}"
+        )
+
+    def _setup_scene_db(self, imgnr):
+        self.loader.clear()
+        self.loader.reconstruct_scene_from_db(imgnr)
+    
+    def _setup_scene_df(self, imgnr, df):
+        self.loader.clear()
+        # self.loader.reconstruct_scene_from_db(imgnr)
+        self.loader.reconstruct_scene_from_df(df.query("imgnr==@imgnr"))
 
 def main(
     data_labels_dir: str,
@@ -301,14 +406,12 @@ if __name__ == "__main__":
         "--predfile",
         help="Render 'bboxes_full' prediction, can be .csv or .db (sqlite3) file",
         type=str,
-        nargs=1,
     )
 
     parser.add_argument(
         "--labelsdir",
         help=f"Directory generated from the blender generation script {cng.GENERATED_DATA_DIR}",
         type=str,
-        nargs=1,
         default=cng.GENERATED_DATA_DIR,
     )
 
@@ -316,7 +419,6 @@ if __name__ == "__main__":
         "--dir",
         help=f"Specify dir for rendered data, default: {cng.LABELCHECK_DATA_DIR}",
         type=str,
-        nargs=1,
         default=cng.LABELCHECK_DATA_DIR,
     )
 
@@ -378,11 +480,24 @@ if __name__ == "__main__":
     mainfile.show_reference(args.reference)
     mainfile.handle_clear(args.clear, args.clear_exit, args.dir)
 
-    main(
+    # main(
+    #     data_labels_dir=args.labelsdir,
+    #     wait=args.no_wait,
+    #     view_mode=args.view_mode,
+    #     imgnrs=args.imgnrs,
+    #     predfile=args.predfile,
+    #     imgrange=args.imgrange,
+    # )
+
+    LabelRenderer(
+        data_recon_dir=args.dir,
         data_labels_dir=args.labelsdir,
+        img_dir=cng.LABELCHECK_IMAGE_DIR,
+        base_img_name=cng.LABELCHECK_IMAGE_NAME,
         wait=args.no_wait,
         view_mode=args.view_mode,
+        interval=cng.COMMIT_INTERVAL,
         imgnrs=args.imgnrs,
         predfile=args.predfile,
-        imgrange=args.imgrange,
-    )
+        imgrange=args.imgrange
+    ).render_loop()

@@ -53,8 +53,10 @@ def section(info: str) -> Callable:
     return section_decorator
 
 
-def rm_directory(directory: str) -> None:
+def rm_directory(directory: str, doublecheck: bool=False) -> None:
     """Removes the given directory"""
+    if doublecheck:
+        input(f"Are you sure you want to remove directory: '{directory}'?")
     print(f"Initalizing clearing process of directory '{yellow(directory)}'")
     import errno, stat, shutil
 
@@ -203,6 +205,8 @@ def rm_collection(
 
 def render_and_save(filepath: str, fileformat: Optional[str] = None) -> dict:
     """Captures image from camera and dumps to file
+    Will automatically add fileformat and camera suffixed to filename,
+    e.g. filepath = img3, fileformat: PNG -> img3_C_TOP.png
 
     Parameters
     ----------

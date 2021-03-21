@@ -262,7 +262,7 @@ class Scenevisitor(metaclass=abc.ABCMeta):
         """
         Do visitor thing
         """
-        pass
+        raise NotImplementedError()
 
 
 class DatadumpVisitor(Scenevisitor):

@@ -12,6 +12,8 @@ import time
 from importlib import reload
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
+import pandas as pd
+
 import bpy
 import numpy as np
 import sqlite3 as db
@@ -175,6 +177,60 @@ class Sceneloader:
             "SELECT class_, x, y, z, w, l, h, rx, ry, rz FROM bboxes_full WHERE imgnr=?",
             (str(imgnr),),
         ):
+            original_object = name2obj[self.num2name[class_n_box[0]]]
+            new_object = self.reconstruct_object(
+                original_object=original_object,
+                pos_size_rot=class_n_box[1:],
+                tag=tag,
+                alter_material=alter_material,
+                spawnbox=spawnbox,
+            )
+            copies.append(new_object)
+
+        return copies
+
+    def reconstruct_scene_from_df(
+        self,
+        df: pd.DataFrame,
+        tag: str = "",
+        alter_material: bool = False,
+        spawnbox: Optional[str] = None,
+    ) -> None:
+        """
+        Create scene from imgnr
+
+        This will not clear the existing target collection before setting up a new scene
+
+        imgnr: int, imgnr found in sqlite3 database generated using generate.py
+
+        tag: str, string to append to object name in Blender
+
+        alter_material: Optional[bool], make fish green and transparent
+                        (useful for comparing prediction and true labels)
+
+        spawnbox: Optional[str], name of spawnbox object, will be used for reference
+        """
+        if spawnbox is None:
+            spawnbox: str = cng.SPAWNBOX_OBJ
+
+        spawnbox: bpy.types.Object = bpy.data.objects[spawnbox]
+
+        originals: Tuple[bpy.types.Object] = tuple(self.src_collection.all_objects)
+        name2obj: Dict[str, bpy.types.Object] = {obj.name: obj for obj in originals}
+
+        class_: int
+        x: float
+        y: float
+        z: float
+        w: float
+        l: float
+        h: float
+        rx: float
+        ry: float
+        rz: float
+
+        copies = []
+        for class_n_box in df.values[:,1:]:
             original_object = name2obj[self.num2name[class_n_box[0]]]
             new_object = self.reconstruct_object(
                 original_object=original_object,

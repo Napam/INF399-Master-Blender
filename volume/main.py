@@ -8,6 +8,7 @@ import os
 import pathlib
 import sys
 from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+import abc
 
 import bpy
 import numpy as np
@@ -104,25 +105,204 @@ def assert_image_saved(filepath: str, view_mode: str) -> None:
             raise FileNotFoundError(f"Center image not found, expected to find: \n\t{path}")
 
 
-class RenderBlender:
+class BaseBlenderRender(abc.ABC):
+    """
+    Base class for scene making and rendering
+
+    This class has a self.setup_scene attribute that must be set to a method, taking in imgnr.
+    The reason self.setup_scene is not made into an abstract method is so you
+    can flexibly determine what it should be based on arguments.
+    """
+
     def __init__(
         self,
+        data_dir: str,
+        img_dir: str,
+        base_img_name: str,
+        wait: bool,
+        view_mode: str,
+        interval: Optional[int] = None,
+    ):
+        """Base class for classes that follows the pattern:
+            1. Set up objects and stuff in Blender scene
+            2. Render stuff
+            3. Extract information by callbacks
+            4. Dump information (and renders) to directory
+
+        Parameters
+        ----------
+        data_dir : str
+            Directory to dump data into
+        base_img_name : str
+            Base name of images, e.g. "img", so renders will be img0.png, img1.png ...
+        wait : bool
+            Ask for user to press enter before running render loop (to read messages)
+        view_mode : str
+            center, leftright, topcenter, all
+        interval : Optional[int], optional
+            Interval to call intervalled callback, by default None
+        """
+        self.wait: bool = wait
+        self.data_dir: str = data_dir
+        self.base_img_name: str = base_img_name
+        self.view_mode: str = view_mode
+        self.imgpath: str = str(dirpath / data_dir / img_dir / base_img_name)
+        self.interval = cng.COMMIT_INTERVAL if interval is None else interval
+
+        self.imgnr_iter: Optional[Iterable[int]] = None
+        self.pre_loop_messages: Optional[Sequence[str]] = None
+        self.setup_scene: Optional[Callable] = None  # Called every iteration before rendering
+        self.iter_callback: Optional[Callable] = None  # Called after every render
+        self.interval_callback: Optional[Callable] = None  # Called in intervals after render
+        self.end_callback: Optional[Callable] = None  # Called after render loop is done
+
+        self.setup_scene_kwargs: dict = {}
+
+    @abc.abstractmethod
+    def initalize_imgnr_iter(self):
+        """
+        Should set self.imgnr_iter to something
+
+        Will get called at beginning of self.render_loop
+        """
+        raise NotImplementedError()
+
+    def assert_before_loop(self):
+        assert self.imgnr_iter is not None, "attribute self.imgnr_iter (iterable) is not set!"
+        assert self.setup_scene is not None, "attibute self.setup_scene (callable) is not set!"
+        assert self.iter_callback is not None, "attribute self.iter_callback (callable) is not set!"
+        assert (
+            self.interval_callback is not None
+        ), "attribute self.intervalled_callback (callable) is not set!"
+        assert self.end_callback is not None, "attribute self.end_callback (callable) is not set!"
+
+    def render_loop(self):
+        """
+        Provides a base behavior for blender render loops
+        """
+        self.initalize_imgnr_iter()
+        self.assert_before_loop()
+
+        if self.pre_loop_messages:
+            utils.print_boxed("Output information:", *self.pre_loop_messages)
+
+        if self.wait:
+            input("Press enter to start rendering\n")
+
+        utils.print_boxed("Rendering initialized")
+
+        len_iter = len(self.imgnr_iter)
+        interval_flag: bool = False  # To make Pylance happy
+        for iternum, imgnr in enumerate(self.imgnr_iter):
+            self.setup_scene(imgnr, **self.setup_scene_kwargs)
+            imgfilepath = self.imgpath + str(imgnr)
+            print(f"Starting to render imgnr {imgnr}")
+            utils.render_and_save(imgfilepath)
+            print(f"Returned from rendering imgnr {imgnr}")
+
+            try:
+                assert_image_saved(imgfilepath, self.view_mode)
+            except FileNotFoundError as e:
+                print(e)
+                print("Breaking render loop")
+                interval_flag == False  # Will enable callback after the loop
+                break
+
+            self.iter_callback(imgnr)
+
+            # Only commit in intervals
+            interval_flag = not imgnr % self.interval
+
+            if interval_flag:
+                self.interval_callback(imgnr)
+
+            print("Progress: ", utils.yellow(f"{iternum+1} / {len_iter}"))
+
+        # If loop exited without commiting remaining stuff
+        # This test is kinda redundant, but idk man
+        if interval_flag == False:
+            self.interval_callback(imgnr)
+
+        self.end_callback()
+
+
+class BlenderRenderGenerater(BaseBlenderRender):
+    def __init__(
+        self,
+        data_dir: str,
+        img_dir: str,
+        base_img_name: str,
+        wait: bool,
+        view_mode: str,
         n: int,
         bbox_modes: Sequence[str],
-        wait: bool,
         stdbboxcam: bpy.types.Object,
-        view_mode: str,
         nspawnrange: Tuple[int, int],
     ):
+        super().__init__(data_dir, img_dir, base_img_name, wait, view_mode)
+        check_or_create_datadir(cng.GENERATED_DATA_DIR, cng.BBOX_DB_FILE)
+
         self.n: int = n
         self.bbox_modes: Sequence[str] = bbox_modes
-        self.wait: bool = wait
         self.stdbboxcam: bpy.types.Object = stdbboxcam
-        self.view_mode: str = view_mode
         self.nspawnrange: Tuple[int, int] = nspawnrange
 
-    def render_iteration(self):
-        pass
+        self.con = db.connect(str(dirpath / cng.GENERATED_DATA_DIR / cng.BBOX_DB_FILE))
+        self.cursor = self.con.cursor()
+
+        self.maker = gen.Scenemaker()
+        gen.create_metadata(self.maker)
+        self.extractor = gen.DatadumpVisitor(
+            stdbboxcam=stdbboxcam, bbox_modes=bbox_modes, cursor=self.cursor
+        )
+
+        self.setup_scene = self._setup_scene
+        self.interval_callback = self.commit
+        self.iter_callback = self.extract_labels
+        self.end_callback = self.close_con
+
+    def commit(self, imgnr: Optional[int] = None):
+        self.con.commit()
+        utils.print_boxed(f"Commited to {cng.BBOX_DB_FILE}")
+
+    def extract_labels(self, imgnr: int):
+        self.extractor.set_n(imgnr)
+        self.extractor.visit(self.maker)
+
+    def close_con(self):
+        utils.print_boxed(f"Closed connection to {cng.BBOX_DB_FILE}")
+        self.con.close()
+
+    def _setup_scene(self, imgnr: int):
+        self.maker.clear()
+        self.maker.generate_scene(np.random.randint(*self.nspawnrange))
+
+    def initalize_imgnr_iter(self):
+        maxids = [
+            gen.get_max_imgid(self.cursor, table)
+            for table in (cng.BBOX_DB_TABLE_CPS, cng.BBOX_DB_TABLE_XYZ)
+        ]
+
+        maxid = max(maxids)
+
+        if maxid < 0:
+            maxid = 0
+        else:
+            maxid += 1
+
+        self.pre_loop_messages = (
+            f"Imgs to render: {self.n}",
+            f"Starting at index: {maxid}",
+            f"Ends at index: {maxid+self.n-1}",
+            f"Saves images at: {os.path.join(self.data_dir, cng.IMAGE_DIR)}",
+            f"Sqlite3 DB at: {os.path.join(self.data_dir, cng.BBOX_DB_FILE)}",
+            f"Metadata at: {os.path.join(self.data_dir, cng.METADATA_FILE)}",
+            f"bbox_modes: {self.bbox_modes}",
+        )
+
+        self.maxid = maxid
+        self.imgnr_iter = range(maxid, maxid + self.n)
+
 
 def main(
     n: int,
@@ -366,13 +546,13 @@ rm_directory: Callable = utils.section("Clear data")(utils.rm_directory)
 def set_attrs_dir(dir_: str) -> None:
     cng.GENERATED_DATA_DIR = dir_
 
-
+utils.section("Clear data")
 def handle_clear(clear: bool, clear_exit: bool, directory: str) -> None:
     """
     Handles --clear and --clear-exit options
     """
     if (clear or clear_exit) == True:
-        rm_directory(directory)
+        rm_directory(directory, doublecheck=True)
         if clear_exit == True:
             print("Exiting")
             exit()
@@ -552,11 +732,23 @@ if __name__ == "__main__":
     show_reference(args.reference)
     handle_clear(args.clear, args.clear_exit, args.dir)
 
-    main(
+    # main(
+    #     n=args.n_imgs,
+    #     bbox_modes=handle_bbox(args.bbox),
+    #     wait=args.no_wait,
+    #     stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
+    #     view_mode=args.view_mode,
+    #     nspawnrange=handle_minmax(args.minmax),
+    # )
+
+    BlenderRenderGenerater(
+        data_dir=args.dir,
+        img_dir=cng.IMAGE_DIR,
+        base_img_name=cng.IMAGE_NAME,
         n=args.n_imgs,
         bbox_modes=handle_bbox(args.bbox),
         wait=args.no_wait,
         stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
         view_mode=args.view_mode,
         nspawnrange=handle_minmax(args.minmax),
-    )
+    ).render_loop()
