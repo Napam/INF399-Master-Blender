@@ -18,6 +18,7 @@ import config as cng
 import argparse
 import sys
 import functools
+import os
 
 
 def print_boxed(*args: Tuple[str], end="\n") -> None:
@@ -50,6 +51,25 @@ def section(info: str) -> Callable:
         return wrapper
 
     return section_decorator
+
+
+def rm_directory(directory: str) -> None:
+    """Removes the given directory"""
+    print(f"Initalizing clearing process of directory '{yellow(directory)}'")
+    import errno, stat, shutil
+
+    def handleRemoveReadonly(func: Callable, path: str, exc):
+        try:
+            excvalue = exc[1]
+            if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+                os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
+                func(path)
+            else:
+                raise exc[1]
+        except FileNotFoundError:
+            print(f"{directory} not found, doing nothing")
+
+    shutil.rmtree(directory, ignore_errors=False, onerror=handleRemoveReadonly)
 
 
 def yellow(string: str):

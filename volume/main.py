@@ -32,6 +32,7 @@ from setup_db import DatabaseMaker
 @utils.section("Data directory")
 def check_or_create_datadir(directory: str, db_file: str) -> None:
     """Checks and if necessary, sets up directories and sqlite3 database """
+    print(f"Specified directory for generated data:\n\t{directory}")
     # If generated data directory does NOT exit
     if not os.path.isdir(directory):
         # Create directory
@@ -103,6 +104,26 @@ def assert_image_saved(filepath: str, view_mode: str) -> None:
             raise FileNotFoundError(f"Center image not found, expected to find: \n\t{path}")
 
 
+class RenderBlender:
+    def __init__(
+        self,
+        n: int,
+        bbox_modes: Sequence[str],
+        wait: bool,
+        stdbboxcam: bpy.types.Object,
+        view_mode: str,
+        nspawnrange: Tuple[int, int],
+    ):
+        self.n: int = n
+        self.bbox_modes: Sequence[str] = bbox_modes
+        self.wait: bool = wait
+        self.stdbboxcam: bpy.types.Object = stdbboxcam
+        self.view_mode: str = view_mode
+        self.nspawnrange: Tuple[int, int] = nspawnrange
+
+    def render_iteration(self):
+        pass
+
 def main(
     n: int,
     bbox_modes: Sequence[str],
@@ -169,7 +190,7 @@ def main(
     utils.print_boxed("Rendering initialized")
 
     commit_flag: bool = False  # To make Pylance happy
-    for i in range(maxid, maxid + n):
+    for iternum, i in enumerate(range(maxid, maxid + n)):
         scene.clear()
         scene.generate_scene(np.random.randint(*nspawnrange))
         imgfilepath = imgpath + str(i)
@@ -193,6 +214,8 @@ def main(
 
         if commit_flag:
             commit()
+
+        print("Progress: ", utils.yellow(f"{iternum+1} / {n}"))
 
     # If loop exited without commiting remaining stuff
     if commit_flag == False:
@@ -247,7 +270,9 @@ def set_attrs_engine(engine: str, samples: int) -> None:
         bpy.context.scene.cycles.samples = samples  # .samples for PATH tracing, not r eally used
         bpy.context.scene.cycles.aa_samples = samples  # .aa_samples for BRANCHED_PATH tracing
         print(f"Cycles is set to: {bpy.context.scene.cycles.progressive}")
-        print(f"Cycles will render with {utils.yellow(str(bpy.context.scene.cycles.aa_samples))} samples")
+        print(
+            f"Cycles will render with {utils.yellow(str(bpy.context.scene.cycles.aa_samples))} samples"
+        )
     elif engine == "BLENDER_EEVEE":
         # EEVEE only works with GPU, no need to explicitly set GPU usage
         bpy.context.scene.eevee.taa_render_samples = samples
@@ -334,36 +359,20 @@ def set_attrs_view(mode: str) -> None:
             print(f"{cam.name}'s attributes are set to hardcoded values")
 
 
-@utils.section("Clear data")
-def clear_generated_data(directory: str) -> None:
-    """Removes the given directory"""
-    print(f"Initalizing clearing process of directy {directory}")
-    import errno, stat, shutil
-
-    def handleRemoveReadonly(func: Callable, path: str, exc):
-        try:
-            excvalue = exc[1]
-            if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
-                os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
-                func(path)
-            else:
-                raise exc[1]
-        except FileNotFoundError:
-            print(f"{directory} not found, doing nothing")
-
-    shutil.rmtree(directory, ignore_errors=False, onerror=handleRemoveReadonly)
+# Decorate existing function
+rm_directory: Callable = utils.section("Clear data")(utils.rm_directory)
 
 
 def set_attrs_dir(dir_: str) -> None:
     cng.GENERATED_DATA_DIR = dir_
 
 
-def handle_clear(clear: bool, clear_exit: bool) -> None:
+def handle_clear(clear: bool, clear_exit: bool, directory: str) -> None:
     """
     Handles --clear and --clear-exit options
     """
     if (clear or clear_exit) == True:
-        clear_generated_data(cng.GENERATED_DATA_DIR)
+        rm_directory(directory)
         if clear_exit == True:
             print("Exiting")
             exit()
@@ -436,14 +445,16 @@ def handle_minmax(minmax: Optional[Tuple[int, int]]) -> Tuple[int, int]:
     minmax : Optional[Tuple[int, int]]
         spawn range ~Uniform(*minmax)
     """
-    if minmax is None: 
+    if minmax is None:
         minmax = cng.DEFAULT_SPAWNRANGE
-        
+
     assert len(minmax) == 2
     assert isinstance(minmax[0], int)
     assert isinstance(minmax[1], int)
 
-    print(f"Number of fish in a scene will be sampled from {utils.yellow(f'Uniform({minmax[0]}, {minmax[1]})')}")
+    print(
+        f"Number of fish in a scene will be sampled from {utils.yellow(f'Uniform({minmax[0]}, {minmax[1]})')}"
+    )
     return minmax
 
 
@@ -539,7 +550,7 @@ if __name__ == "__main__":
     set_attrs_engine(args.engine, args.samples)
     set_attrs_view(args.view_mode)
     show_reference(args.reference)
-    handle_clear(args.clear, args.clear_exit)
+    handle_clear(args.clear, args.clear_exit, args.dir)
 
     main(
         n=args.n_imgs,
@@ -547,5 +558,5 @@ if __name__ == "__main__":
         wait=args.no_wait,
         stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
         view_mode=args.view_mode,
-        nspawnrange=handle_minmax(args.minmax)
+        nspawnrange=handle_minmax(args.minmax),
     )

@@ -14,7 +14,6 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import bpy
 import numpy as np
-import pandas as pd
 import sqlite3 as db
 
 # Add local files ty pythondir in order to import relative files
@@ -57,6 +56,7 @@ def make_fish_colored_transparent(material: bpy.types.Material):
     transparent = nodes.new("ShaderNodeBsdfTransparent")
     mix.inputs["Fac"].default_value = cng.DEFAULT_MIXSHADER_FAC
     transparent.inputs["Color"].default_value = cng.DEFAULT_ALTER_COLOR  # R G B A
+    glossy.inputs["Roughness"].default_value = 0.85
 
     links.new(input=glossy.inputs[0], output=img.outputs[0])  # Connect img colors to glossy color
     links.new(input=mix.inputs[2], output=transparent.outputs[0])  # Connect Transparent to mix
@@ -113,7 +113,9 @@ class Sceneloader:
 
         Initializes self.con, and self.c
         """
-        self.con = db.connect(f"file:{os.path.join(self.data_dir, cng.BBOX_DB_FILE)}?mode=ro", uri=True)
+        self.con = db.connect(
+            f"file:{os.path.join(self.data_dir, cng.BBOX_DB_FILE)}?mode=ro", uri=True
+        )
         self.c = self.con.cursor()
 
         # Assert that the table "bboxes_full" exists
@@ -132,12 +134,8 @@ class Sceneloader:
     def __del__(self):
         self.con.close()
 
-    def reconstruct_scene(
-        self,
-        imgnr: int,
-        tag: str = "",
-        alter_material: bool = False,
-        spawnbox: Optional[str] = None
+    def reconstruct_scene_from_db(
+        self, imgnr: int, tag: str = "", alter_material: bool = False, spawnbox: Optional[str] = None
     ) -> None:
         """
         Create scene from imgnr
@@ -148,10 +146,10 @@ class Sceneloader:
 
         tag: str, string to append to object name in Blender
 
-        alter_material: Optional[bool], make fish green and transparent 
-                        (useful for comparing prediction and true labels) 
+        alter_material: Optional[bool], make fish green and transparent
+                        (useful for comparing prediction and true labels)
 
-        spawnbox: Optinoal[str], name of spawnbox object, will be used for reference
+        spawnbox: Optional[str], name of spawnbox object, will be used for reference
         """
         if spawnbox is None:
             spawnbox: str = cng.SPAWNBOX_OBJ
@@ -173,34 +171,72 @@ class Sceneloader:
         rz: float
 
         copies = []
-        for class_, x, y, z, w, l, h, rx, ry, rz in self.c.execute(
+        for class_n_box in self.c.execute(
             "SELECT class_, x, y, z, w, l, h, rx, ry, rz FROM bboxes_full WHERE imgnr=?",
             (str(imgnr),),
         ):
-            _og_obj = name2obj[self.num2name[class_]]
-            new_obj = _og_obj.copy()
-            new_obj.data = _og_obj.data.copy()
-
-            new_obj.location = np.array((x, y, z)) * (spawnbox.dimensions / 2) + spawnbox.location
-            new_obj.dimensions = (w, l, h)
-            new_obj.rotation_euler = np.array((rx, ry, rz)) * 2 * np.pi
-
-            new_obj.name += tag
-            new_obj.show_bounds = True
-            new_obj.show_name = True
-
-            if alter_material:
-                # Assuming _og_obj has one material slot, the line below is the same as
-                # new_obj.material_slots[0].material = _og_obj.active_material.copy()
-                new_material = _og_obj.active_material.copy()
-                new_material = make_fish_colored_transparent(new_material)
-                new_obj.active_material = new_material
-
-            # Link to target collection
-            self.target_collection.objects.link(new_obj)
-            copies.append(new_obj)
+            original_object = name2obj[self.num2name[class_n_box[0]]]
+            new_object = self.reconstruct_object(
+                original_object=original_object,
+                pos_size_rot=class_n_box[1:],
+                tag=tag,
+                alter_material=alter_material,
+                spawnbox=spawnbox,
+            )
+            copies.append(new_object)
 
         return copies
+
+    def reconstruct_object(
+        self,
+        original_object: bpy.types.Object,
+        pos_size_rot: Tuple[float, float, float, float, float, float, float, float, float],
+        tag: str = "",
+        alter_material: bool = False,
+        spawnbox: Optional[str] = None,
+    ):
+        """Recreate given blender object and its physical attributes (position, size and rotation)
+
+        Parameters
+        ----------
+        original_object : bpy.types.Object
+        box : Tuple[float, float, float, float, float, float, float, float, float]
+              pos      size      rotation
+            x, y, z,  w, l, h,  rx, ry, rz
+        tag : str, optional
+            nametag, by default ""
+        alter_material : bool, optional
+            turn objects green transparent, by default False
+        spawnbox : Optional[str], optional
+            Name of spawnbox, by default None
+
+        Returns
+        -------
+        bpy.types.Object
+            Possibly altered copy of given object
+        """
+        x, y, z, w, l, h, rx, ry, rz = pos_size_rot
+        new_obj = original_object.copy()
+        new_obj.data = original_object.data.copy()
+
+        new_obj.location = np.array((x, y, z)) * (spawnbox.dimensions / 2) + spawnbox.location
+        new_obj.dimensions = (w, l, h)
+        new_obj.rotation_euler = np.array((rx, ry, rz)) * 2 * np.pi
+
+        new_obj.name += tag
+        new_obj.show_bounds = True
+        new_obj.show_name = True
+
+        if alter_material:
+            # Assuming original_object has one material slot, the line below is the same as
+            # new_obj.material_slots[0].material = _og_obj.active_material.copy()
+            new_material = original_object.active_material.copy()
+            new_material = make_fish_colored_transparent(new_material)
+            new_obj.active_material = new_material
+
+        # Link to target collection
+        self.target_collection.objects.link(new_obj)
+        return new_obj
 
     def clear(self) -> None:
         """
@@ -212,4 +248,4 @@ class Sceneloader:
 if __name__ == "__main__":
     DIR = "nogit_gen"
     loader = Sceneloader(DIR)
-    loader.reconstruct_scene(0)
+    loader.reconstruct_scene_from_db(0)

@@ -39,7 +39,7 @@ DEFAULT_SPAWNRANGE = (1, 6) # Draw from uniform dist (1, 6) to determine how man
 
 """reconstruct.py"""
 DEFAULT_ALTER_COLOR = (0.2, 1, 0.2, 1) # R G B A
-DEFAULT_MIXSHADER_FAC = 0.2 # Mixing between transparent and texture
+DEFAULT_MIXSHADER_FAC = 0.3 # Mixing between transparent and texture
 
 """Filesystem, data and database"""
 GENERATED_DATA_DIR = "generated_data"
@@ -72,14 +72,14 @@ LABELCHECK_IMAGE_DIR = "reconstructed_labels"  # Will be placed in LABELCHECK_DA
 LABELCHECK_IMAGE_NAME = "reimg"
 LABELCHECK_DB_TABLE = "rendered" 
 LABELCHECK_DB_IMGNR = "imgnr" 
-LABELCHECK_DB_FILE = "reconstructedlabels.db"
+LABELCHECK_DB_FILE = "recon.db"
 
 """CLI"""
 # options suffixed with _SHORT are the shortened version of the big one
 # none of the OPT_* stuff is used in code as of 09/01/2021
 OPT_ENGINE = "--engine"  # Choose engine, (BLENDER_EEVEE, CYCLES)
 OPT_ENGINE_SHORT = "-e"
-OPT_CLEAR = "--clear"  
+OPT_CLEAR = "--clear"
 OPT_CLEAR_EXIT = "--clear-exit"
 OPT_DEVICE = "--device"
 OPT_DEVICE_SHORT = "--d"
