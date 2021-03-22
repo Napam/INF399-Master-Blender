@@ -170,6 +170,7 @@ class BaseBlenderRender(abc.ABC):
     def assert_before_loop(self):
         assert self.imgnr_iter is not None, "attribute self.imgnr_iter (iterable) is not set!"
         assert self.setup_scene is not None, "attibute self.setup_scene (callable) is not set!"
+        assert isinstance(self.setup_scene_kwargs, dict), "attibute self.setup_scene_kwargs should be a dictionary!"
         assert self.iter_callback is not None, "attribute self.iter_callback (callable) is not set!"
         assert (
             self.interval_callback is not None
@@ -219,7 +220,7 @@ class BaseBlenderRender(abc.ABC):
             print("Progress: ", utils.yellow(f"{iternum+1} / {len_iter}"))
 
         # If loop exited without commiting remaining stuff
-        # This test is kinda redundant, but idk man
+        # This if test is kinda redundant, but idk man
         if interval_flag == False:
             self.interval_callback(imgnr)
 
@@ -294,9 +295,9 @@ class BlenderRenderGenerater(BaseBlenderRender):
             f"Imgs to render: {self.n}",
             f"Starting at index: {maxid}",
             f"Ends at index: {maxid+self.n-1}",
-            f"Saves images at: {os.path.join(self.data_dir, cng.IMAGE_DIR)}",
-            f"Sqlite3 DB at: {os.path.join(self.data_dir, cng.BBOX_DB_FILE)}",
-            f"Metadata at: {os.path.join(self.data_dir, cng.METADATA_FILE)}",
+            f"Saves images at: {utils.yellow(os.path.join(self.data_dir, cng.IMAGE_DIR))}",
+            f"Sqlite3 DB at: {utils.yellow(os.path.join(self.data_dir, cng.BBOX_DB_FILE))}",
+            f"Metadata at: {utils.yellow(os.path.join(self.data_dir, cng.METADATA_FILE))}",
             f"bbox_modes: {self.bbox_modes}",
         )
 
@@ -546,6 +547,7 @@ rm_directory: Callable = utils.section("Clear data")(utils.rm_directory)
 def set_attrs_dir(dir_: str) -> None:
     cng.GENERATED_DATA_DIR = dir_
 
+
 utils.section("Clear data")
 def handle_clear(clear: bool, clear_exit: bool, directory: str) -> None:
     """
@@ -591,10 +593,10 @@ def handle_stdbboxcam(camchoice: str, view_mode: str) -> bpy.types.Object:
     }
 
     print(f"Choice of camera: {camchoice}")
-    if not camchoice in dicky[view_mode]:
+    if camchoice not in dicky[view_mode]:
         print(
-            f"{utils.red('WARNING:')} Choice of stdbbox camera is \"{camchoice}\", which is not\n"
-            f"{' '*len('WARNING: ')}included for rendering since view mode is \"{view_mode}\""
+            f"{utils.red('WARNING:')} Choice of stdbbox camera is '{utils.yellow(str(camchoice))}', which is not\n"
+            f"{' '*len('WARNING: ')}included for rendering since view mode is '{utils.yellow(str(view_mode))}'"
         )
 
     # Should match the name of corresponding camera in Blender
@@ -613,7 +615,7 @@ def show_reference(hide: bool) -> None:
     hide : bool
     """
     bpy.data.collections[cng.REF_CLTN].hide_render = hide
-    print(f"Hide objects in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}")
+    print(f"{utils.yellow('Hide objects')} in reference collection: {bpy.data.collections[cng.REF_CLTN].hide_render}")
 
 
 @utils.section("Number of fish to spawn")
@@ -640,9 +642,11 @@ def handle_minmax(minmax: Optional[Tuple[int, int]]) -> Tuple[int, int]:
 
 if __name__ == "__main__":
     utils.print_boxed(
-        "FISH GENERATION BABYYY",
+        "\x1b[30;43mFISH GENERATION BABYYY\x1b[m",
+        "",
         f"Blender version: {bpy.app.version_string}",
         f"Python version: {sys.version.split()[0]}",
+        "",
         end="\n\n",
     )
 
@@ -741,14 +745,19 @@ if __name__ == "__main__":
     #     nspawnrange=handle_minmax(args.minmax),
     # )
 
-    BlenderRenderGenerater(
-        data_dir=args.dir,
-        img_dir=cng.IMAGE_DIR,
-        base_img_name=cng.IMAGE_NAME,
-        n=args.n_imgs,
-        bbox_modes=handle_bbox(args.bbox),
-        wait=args.no_wait,
-        stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
-        view_mode=args.view_mode,
-        nspawnrange=handle_minmax(args.minmax),
-    ).render_loop()
+    try:
+        BlenderRenderGenerater(
+            data_dir=args.dir,
+            img_dir=cng.IMAGE_DIR,
+            base_img_name=cng.IMAGE_NAME,
+            n=args.n_imgs,
+            bbox_modes=handle_bbox(args.bbox),
+            wait=args.no_wait,
+            stdbboxcam=handle_stdbboxcam(args.stdbboxcam, args.view_mode),
+            view_mode=args.view_mode,
+            nspawnrange=handle_minmax(args.minmax),
+        ).render_loop()
+    except (KeyboardInterrupt, EOFError) as e:
+        print("Got KeyboardInterrupt or EOFError:")
+        print(f"Error message:\n\t{e}")
+        print(utils.red("Exiting..."))

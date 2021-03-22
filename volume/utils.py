@@ -19,6 +19,9 @@ import argparse
 import sys
 import functools
 import os
+import re
+
+RE_ANSI = re.compile(r"\x1b\[[;\d]*[A-Za-z]")  # Taken from tqdm source code
 
 
 def print_boxed(*args: Tuple[str], end="\n") -> None:
@@ -28,11 +31,17 @@ def print_boxed(*args: Tuple[str], end="\n") -> None:
     I'm a bit extra sometimes u know?
     """
 
-    width = max(max(map(len, args)) + 2 * len(cng.BOXED_STR_SIDE) + 2, cng.HIGHLIGHT_MIN_WIDTH)
+    width: int = max(max(map(len, args)) + 2 * len(cng.BOXED_STR_SIDE) + 2, cng.HIGHLIGHT_MIN_WIDTH)
 
     print(f"{'':{cng.BOXED_SYMBOL_TOP}^{width}}")
     for info in args:
-        print(f"{cng.BOXED_STR_SIDE}{info:^{width-2*len(cng.BOXED_STR_SIDE)}}{cng.BOXED_STR_SIDE}")
+        # Adjust string length to accomdodate for ansi escape sequences
+        ansilen = len("".join(RE_ANSI.findall(info)))
+        print(
+            f"{cng.BOXED_STR_SIDE}"
+            f"{info:^{width-2*len(cng.BOXED_STR_SIDE)+ansilen}}"
+            f"{cng.BOXED_STR_SIDE}"
+        )
     print(f"{'':{cng.BOXED_SYMBOL_BOTTOM}^{width}}", end=end)
 
 
@@ -53,7 +62,7 @@ def section(info: str) -> Callable:
     return section_decorator
 
 
-def rm_directory(directory: str, doublecheck: bool=False) -> None:
+def rm_directory(directory: str, doublecheck: bool = False) -> None:
     """Removes the given directory"""
     if doublecheck:
         input(f"Are you sure you want to remove directory: '{directory}'?")
@@ -185,7 +194,7 @@ def rm_collection(
         remove meshes bound to objects, by default True
     lights : bool, optional
         remove lights bound to objeects, by default True
-    """  
+    """
     if isinstance(collection, str):
         collection: bpy.types.Collection = bpy.data.collections[collection]
 
@@ -231,7 +240,7 @@ def render_and_save(filepath: str, fileformat: Optional[str] = None) -> dict:
 
 def clear_all_node_links(material: bpy.types.Material):
     """
-    Clears all linkes between shader nodes in given material 
+    Clears all linkes between shader nodes in given material
     """
     for link in material.node_tree.links:
         material.node_tree.links.remove(link)
@@ -239,7 +248,7 @@ def clear_all_node_links(material: bpy.types.Material):
 
 def disable_all_render_views():
     """
-    Disables all cameras in 
+    Disables all cameras in
     Properties pane -> Output properties -> Stereoscopy -> Multi-View
     """
     for camera in bpy.context.scene.render.views:
