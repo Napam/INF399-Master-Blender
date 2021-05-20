@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
 	libxrender1 \
 	screen \ 
 	sqlite3 \
+    vim \
 	xz-utils \
 && apt-get -y autoremove && rm -rf /var/lib/apt/lists/*
 
