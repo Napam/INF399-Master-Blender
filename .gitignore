@@ -19,6 +19,7 @@ volume/.bash_history
 
 ## Vim stuff
 *.swp
+*.vim*
 
 ## Blender files
 *.blend
