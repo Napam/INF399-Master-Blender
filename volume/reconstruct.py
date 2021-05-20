@@ -192,16 +192,13 @@ class Sceneloader:
     def reconstruct_scene_from_df(
         self,
         df: pd.DataFrame,
+        imgnr: int,
         tag: str = "",
         alter_material: bool = False,
         spawnbox: Optional[str] = None,
-    ) -> None:
+    ):
         """
-        Create scene from imgnr
-
         This will not clear the existing target collection before setting up a new scene
-
-        imgnr: int, imgnr found in sqlite3 database generated using generate.py
 
         tag: str, string to append to object name in Blender
 
@@ -230,7 +227,7 @@ class Sceneloader:
         rz: float
 
         copies = []
-        for class_n_box in df.values[:,1:]:
+        for class_n_box in df.query("imgnr==@imgnr").values[:,1:]:
             original_object = name2obj[self.num2name[class_n_box[0]]]
             new_object = self.reconstruct_object(
                 original_object=original_object,
@@ -242,6 +239,16 @@ class Sceneloader:
             copies.append(new_object)
 
         return copies
+
+    def reconstruct_scene_from_csv(
+        self,
+        csvfile: str,
+        imgnr: int,
+        tag: str = "",
+        alter_material: bool = False,
+        spawnbox: Optional[str] = None,
+    ):
+        return self.reconstruct_scene_from_df(pd.read_csv(csvfile), imgnr, tag, alter_material, spawnbox)
 
     def reconstruct_object(
         self,
